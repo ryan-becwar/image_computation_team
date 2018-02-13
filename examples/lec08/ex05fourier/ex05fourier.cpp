@@ -73,6 +73,21 @@ int main(int argc, char ** argv)
     Mat kernelX   = getGaussianKernel(img.rows, sigma, CV_32FC1);
     Mat kernelY   = getGaussianKernel(img.cols, sigma, CV_32FC1);
     Mat kernel  = kernelX * kernelY.t();
+
+    /*
+    for(int i=0; i<kernel.rows; i++){
+        uchar* p = kernel.ptr<uchar>(i);
+        for(int j=0; j<kernel.cols; j++){
+            p[j] = 255 - p[j];
+        }
+    }
+    */
+    //Mat sub_mat = Mat::ones(kernel.size(), kernel.type())*255;
+    //subtract(sub_mat, kernel, kernel);
+
+
+
+
     Mat kernel_d = kernel.clone();
     normalize(kernel_d, kernel_d, 0, 1, CV_MINMAX);
 	imshow("Spatial Domain", kernel_d);
@@ -86,12 +101,18 @@ int main(int argc, char ** argv)
     prdRI = imgRI.clone();
     dft(imgRI, imgRI, DFT_COMPLEX_OUTPUT);
     dft(kerRI, kerRI, DFT_COMPLEX_OUTPUT);
-    // complexMultiply(imgRI, kerRI, prdRI);
+     //complexMultiply(imgRI, kerRI, prdRI);
     mulSpectrums(imgRI, kerRI, prdRI, DFT_COMPLEX_OUTPUT);
 
-    Mat inverseTransform;
-    dft(imgRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
-    //dftQuadSwap(inverseTransform);
+    //Point2i center(255,255);
+    //circle(imgRI, center, 100, Scalar(0,0,0), -1);
+
+    //imshow("imgRI", imgRI);
+
+    Mat inverseTransform; // broken because it takes inverse of original image
+    //dft(imgRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
+    dft(prdRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
+    dftQuadSwap(inverseTransform);
     normalize(inverseTransform, inverseTransform, 0, 1, CV_MINMAX);
     imshow("Reconstructed", inverseTransform);
     waitKey();

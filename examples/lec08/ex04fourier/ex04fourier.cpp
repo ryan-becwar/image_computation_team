@@ -24,6 +24,9 @@ int main(int argc, char ** argv)
     Mat kernelX   = getGaussianKernel(4*sigma, sigma, CV_32FC1);
     Mat kernelY   = getGaussianKernel(4*sigma, sigma, CV_32FC1);
     Mat kernel  = kernelX * kernelY.t();
+    Mat sub_mat = Mat::ones(kernel.size(), kernel.type())*255;
+    subtract(sub_mat, kernel, kernel);
+
     Mat kernel_d = kernel.clone();
     normalize(kernel_d, kernel_d, 0, 1, CV_MINMAX);
 	imshow("Gaussian Kernel", kernel_d);

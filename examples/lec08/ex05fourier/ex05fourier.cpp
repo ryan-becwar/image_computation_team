@@ -2,8 +2,10 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include <iostream>
+#include <vector>
 
 using namespace cv;
+using namespace std;
 
 /*
  * In this example we do smoothing with a Gaussian, but in the
@@ -51,47 +53,35 @@ void complexMultiply(Mat& s1, Mat& s2, Mat& res){
     merge(resp, 2, res);
 }
 
-int main(int argc, char ** argv)
-{
+void doHighPass(Mat img) {
+    Mat imgPlanes[] = {Mat_<float>(img),    Mat::zeros(img.size(),    CV_32F)};
+    Mat imgRI, prdRI;
+    merge(imgPlanes, 2, imgRI);
+    prdRI = imgRI.clone();
+    dft(imgRI, imgRI, DFT_COMPLEX_OUTPUT);
+	dftQuadSwap(imgRI);
+    Point2i center(imgRI.rows/2,imgRI.cols/2);
+    circle(imgRI, center, 30, Scalar(0,0,0), -1);
+	vector<Mat> channels(2);
+	split(imgRI, channels);
+    imshow("HP imgR", channels[0]);
+    imshow("HP imgI", channels[1]);
+	dftQuadSwap(imgRI);
+    Mat inverseTransform; 
+    dft(imgRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
+    normalize(inverseTransform, inverseTransform, 0, 1, CV_MINMAX);
+    imshow("High Pass", inverseTransform);
+}
 
-    //  Start by loading the image to be smoothed
-    const char* filename = argc >=2 ? argv[1] : "colostate_quad_bw_512.png";
-
-    Mat inImg = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
-    if( inImg.empty())
-        return -1;
-
-    Mat img;                            //expand input image to optimal size
-    int m = getOptimalDFTSize( img.rows );
-    int n = getOptimalDFTSize( img.cols ); // on the border add zero values
-    copyMakeBorder(inImg, img, 0, m - img.rows, 0, n - img.cols, BORDER_CONSTANT, Scalar::all(0));
-    imshow("Padded Source Image", img);
-
+void doLowPass(Mat img) {
 	// Now construct a Gaussian kernel
     float sigma = 4.0;
-
     Mat kernelX   = getGaussianKernel(img.rows, sigma, CV_32FC1);
     Mat kernelY   = getGaussianKernel(img.cols, sigma, CV_32FC1);
     Mat kernel  = kernelX * kernelY.t();
-
-    /*
-    for(int i=0; i<kernel.rows; i++){
-        uchar* p = kernel.ptr<uchar>(i);
-        for(int j=0; j<kernel.cols; j++){
-            p[j] = 255 - p[j];
-        }
-    }
-    */
-    //Mat sub_mat = Mat::ones(kernel.size(), kernel.type())*255;
-    //subtract(sub_mat, kernel, kernel);
-
-
-
-
     Mat kernel_d = kernel.clone();
     normalize(kernel_d, kernel_d, 0, 1, CV_MINMAX);
 	imshow("Spatial Domain", kernel_d);
-
     // Build complex images for both the source image and the Gaussian kernel
     Mat imgPlanes[] = {Mat_<float>(img),    Mat::zeros(img.size(),    CV_32F)};
     Mat kerPlanes[] = {Mat_<float>(kernel), Mat::zeros(kernel.size(), CV_32F)};
@@ -101,20 +91,36 @@ int main(int argc, char ** argv)
     prdRI = imgRI.clone();
     dft(imgRI, imgRI, DFT_COMPLEX_OUTPUT);
     dft(kerRI, kerRI, DFT_COMPLEX_OUTPUT);
-     //complexMultiply(imgRI, kerRI, prdRI);
+	dftQuadSwap(imgRI);
+	vector<Mat> channels(2);
+	split(imgRI, channels);
+    imshow("LP imgR", channels[0]);
+    imshow("LP imgI", channels[1]);
+	dftQuadSwap(imgRI);
     mulSpectrums(imgRI, kerRI, prdRI, DFT_COMPLEX_OUTPUT);
-
-    //Point2i center(255,255);
-    //circle(imgRI, center, 100, Scalar(0,0,0), -1);
-
-    //imshow("imgRI", imgRI);
-
     Mat inverseTransform; // broken because it takes inverse of original image
-    //dft(imgRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
+    dft(imgRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
     dft(prdRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
     dftQuadSwap(inverseTransform);
     normalize(inverseTransform, inverseTransform, 0, 1, CV_MINMAX);
-    imshow("Reconstructed", inverseTransform);
+    imshow("Low pass", inverseTransform);
+}
+
+int main(int argc, char ** argv)
+{
+    //  Start by loading the image to be smoothed
+    const char* filename = argc >=2 ? argv[1] : "colostate_quad_bw_512.png";
+    Mat inImg = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
+    if( inImg.empty())
+        return -1;
+    Mat img;                            //expand input image to optimal size
+    int m = getOptimalDFTSize( img.rows );
+    int n = getOptimalDFTSize( img.cols ); // on the border add zero values
+    copyMakeBorder(inImg, img, 0, m - img.rows, 0, n - img.cols, BORDER_CONSTANT, Scalar::all(0));
+    imshow("Padded Source Image", img);
+	doHighPass(img);
+    waitKey();
+	doLowPass(img);
     waitKey();
     return 0;
 }

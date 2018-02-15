@@ -94,12 +94,14 @@ Mat doLowPass(Mat img) {
 	return inverseTransform;
 }
 
-void doSomethingCool(Mat img) {
+Mat doSomethingCool(Mat img) {
 	vector<Mat> channels(3);
 	split(img, channels);
-	imshow("Blue channel", channels[0]);
-	imshow("Green channel", channels[1]);
-	imshow("Red channel", channels[2]);
+	channels[0] = doLowPass(channels[0]);
+	channels[1] = doHighPass(channels[1]);
+	Mat output;
+	merge(channels, output);
+	return output;
 }
 
 
@@ -107,9 +109,7 @@ int main(int argc, char ** argv)
 {
     //  Start by loading the image to be smoothed
 	const char* filename = argc >= 3 ? argv[2] : "colostate_quad_bw_512.png";
-	bool isColor = string(argv[1]) == "color";
-	cout<<argv[1]<<endl;
-	cout<<isColor<<endl;
+	bool isColor = argc >= 2 ? string(argv[1]) == "color" : false;
     Mat img;                            //expand input image to optimal size
 	if (isColor) 
 		img = imread(filename, CV_LOAD_IMAGE_COLOR);
@@ -119,7 +119,7 @@ int main(int argc, char ** argv)
         return -1;
 	int nChannels = img.channels();
 	if (isColor)
-		doSomethingCool(img);
+		imshow("cool", doSomethingCool(img));
 	else {
 		Mat bimg;
 		int m = getOptimalDFTSize( img.rows );

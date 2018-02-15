@@ -97,10 +97,11 @@ Mat doLowPass(Mat img) {
 Mat doSomethingCool(Mat img) {
 	vector<Mat> channels(3);
 	split(img, channels);
-	channels[0] = doLowPass(channels[0]);
-	channels[1] = doHighPass(channels[1]);
+	Mat B = doLowPass(channels[0]);
+	Mat G = doHighPass(channels[1]);
+	vector<Mat> input = {B, G, channels[2]};
 	Mat output;
-	merge(channels, output);
+	merge(input, output);
 	return output;
 }
 
@@ -110,23 +111,23 @@ int main(int argc, char ** argv)
     //  Start by loading the image to be smoothed
 	const char* filename = argc >= 3 ? argv[2] : "colostate_quad_bw_512.png";
 	bool isColor = argc >= 2 ? string(argv[1]) == "color" : false;
-    Mat img;                            //expand input image to optimal size
+    Mat inimg;                            //expand input image to optimal size
 	if (isColor) 
-		img = imread(filename, CV_LOAD_IMAGE_COLOR);
+		inimg = imread(filename, CV_LOAD_IMAGE_COLOR);
 	else
-		img = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
-    if( img.empty())
+		inimg = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
+	Mat img;
+	int m = getOptimalDFTSize( img.rows );
+	int n = getOptimalDFTSize( img.cols ); // on the border add zero values
+	copyMakeBorder(inimg, img, 0, m - img.rows, 0, n - img.cols, BORDER_CONSTANT, Scalar::all(0));
+    if( inimg.empty())
         return -1;
 	int nChannels = img.channels();
 	if (isColor)
 		imshow("cool", doSomethingCool(img));
 	else {
-		Mat bimg;
-		int m = getOptimalDFTSize( img.rows );
-		int n = getOptimalDFTSize( img.cols ); // on the border add zero values
-		copyMakeBorder(bimg, img, 0, m - img.rows, 0, n - img.cols, BORDER_CONSTANT, Scalar::all(0));
-		imshow("High Pass", doHighPass(bimg));
-		imshow("Low Pass", doLowPass(bimg));
+		imshow("High Pass", doHighPass(img));
+		imshow("Low Pass", doLowPass(img));
 	}
 	waitKey();
     return 0;

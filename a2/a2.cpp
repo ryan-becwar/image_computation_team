@@ -8,14 +8,6 @@
 using namespace cv;
 using namespace std;
 
-/*
- * In this example we do smoothing with a Gaussian, but in the
- * Frequency domain.
- *
- * Ross Beveridge
- *
- */
-
 void dftQuadSwap (Mat& img)  {
     // rearrange the quadrants of Fourier image  so that the origin is at the image center
     int cx = img.cols/2;
@@ -49,7 +41,7 @@ Mat doHighPass(Mat img) {
     dft(imgRI, imgRI, DFT_COMPLEX_OUTPUT);
 	dftQuadSwap(imgRI);
     Point2i center(imgRI.rows/2,imgRI.cols/2);
-    circle(imgRI, center, 30, Scalar(0,0,0), -1);
+    circle(imgRI, center, 50, Scalar(0,0,0), -1);
 	/*vector<Mat> channels(2);
 	split(imgRI, channels);
     imshow("HP imgR", channels[0]);
@@ -63,7 +55,7 @@ Mat doHighPass(Mat img) {
 
 Mat doLowPass(Mat img) {
 	// Now construct a Gaussian kernel
-    float sigma = 4.0;
+    float sigma = 8.0;
     Mat kernelX   = getGaussianKernel(img.rows, sigma, CV_32FC1);
     Mat kernelY   = getGaussianKernel(img.cols, sigma, CV_32FC1);
     Mat kernel  = kernelX * kernelY.t();
@@ -105,29 +97,54 @@ Mat doSomethingCool(Mat img) {
 	return output;
 }
 
+Mat doSomethingCool2(Mat img, Mat edges) {
+	// BGR to HSV
+	cvtColor(img, img, CV_BGR2HSV);    
+	for (int i=0; i < img.rows ; i++)
+	{
+		for(int j=0; j < img.cols; j++)
+		{
+			int b = edges.at<cv::Vec3b>(i,j)[0];
+			int g = edges.at<cv::Vec3b>(i,j)[1];
+			int r = edges.at<cv::Vec3b>(i,j)[2];
+			float ratio = float(b + g + r) / float(3 * 255) + 1;
+			int s = img.at<cv::Vec3b>(i,j)[1];
+			int s2 = s * ratio;
+			img.at<cv::Vec3b>(i,j)[1] = s2;
+		}
+	}
+	// HSV back to BGR
+	cvtColor(img, img, CV_HSV2BGR);
+	return img;
+}
 
 int main(int argc, char ** argv)
 {
     //  Start by loading the image to be smoothed
 	const char* filename = argc >= 3 ? argv[2] : "colostate_quad_bw_512.png";
-	bool isColor = argc >= 2 ? string(argv[1]) == "color" : false;
+	bool isCool = argc >= 2 ? string(argv[1]) == "cool" : false;
     Mat inimg;                            //expand input image to optimal size
-	if (isColor) 
-		inimg = imread(filename, CV_LOAD_IMAGE_COLOR);
-	else
-		inimg = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
+    Mat inimggray;                            //expand input image to optimal size
+	inimg = imread(filename, CV_LOAD_IMAGE_COLOR);
+	inimggray = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
 	Mat img;
+	Mat imggray;
 	int m = getOptimalDFTSize( img.rows );
 	int n = getOptimalDFTSize( img.cols ); // on the border add zero values
+	int mg = getOptimalDFTSize( imggray.rows );
+	int ng = getOptimalDFTSize( imggray.cols ); // on the border add zero values
 	copyMakeBorder(inimg, img, 0, m - img.rows, 0, n - img.cols, BORDER_CONSTANT, Scalar::all(0));
+	copyMakeBorder(inimggray, imggray, 0, m - imggray.rows, 0, n - imggray.cols, BORDER_CONSTANT, Scalar::all(0));
     if( inimg.empty())
         return -1;
-	int nChannels = img.channels();
-	if (isColor)
-		imshow("cool", doSomethingCool(img));
-	else {
-		imshow("High Pass", doHighPass(img));
-		imshow("Low Pass", doLowPass(img));
+	if (isCool) {
+		Mat im2 = doHighPass(imggray);
+		imshow("original", img);
+		imshow("high-pass", im2);
+		imshow("cool", doSomethingCool2(img, im2));
+	} else {
+		imshow("High Pass", doHighPass(imggray));
+		imshow("Low Pass", doLowPass(imggray));
 	}
 	waitKey();
     return 0;

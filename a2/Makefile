@@ -1,6 +1,6 @@
-a2 all:
-	g++ *.cpp -g -I/opt/local/include -L/opt/local/lib  -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -o a2
+a2:
+	g++ a2.cpp -g -I/opt/local/include -L/opt/local/lib  -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -o a2
 clean:
 	rm -f a2
-run: clean all
+run: clean a2
 	./a2

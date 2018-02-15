@@ -3,6 +3,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include <iostream>
 #include <vector>
+#include <string>
 
 using namespace cv;
 using namespace std;
@@ -40,20 +41,7 @@ void switchLogScale(Mat& img) {
     log(img, img);
 }
 
-void complexMultiply(Mat& s1, Mat& s2, Mat& res){
-	Mat s1p[]  = {Mat_<float>(s1),  Mat::zeros(s1.size(),  CV_32F)};
-    Mat s2p[]  = {Mat_<float>(s2),  Mat::zeros(s2.size(),  CV_32F)};
-    Mat resp[] = {Mat_<float>(res), Mat::zeros(res.size(), CV_32F)};
-	split(s1, s1p);
-	split(s2, s2p);
-    split(res, resp);
-    // real then the imaginary part of the result
-    resp[0] = (s1p[0] * s2p[0]) - (s1p[1] * s2p[1]);
-    resp[1] = (s1p[0] * s2p[1]) + (s1p[1] * s2p[0]);
-    merge(resp, 2, res);
-}
-
-void doHighPass(Mat img) {
+Mat doHighPass(Mat img) {
     Mat imgPlanes[] = {Mat_<float>(img),    Mat::zeros(img.size(),    CV_32F)};
     Mat imgRI, prdRI;
     merge(imgPlanes, 2, imgRI);
@@ -62,18 +50,18 @@ void doHighPass(Mat img) {
 	dftQuadSwap(imgRI);
     Point2i center(imgRI.rows/2,imgRI.cols/2);
     circle(imgRI, center, 30, Scalar(0,0,0), -1);
-	vector<Mat> channels(2);
+	/*vector<Mat> channels(2);
 	split(imgRI, channels);
     imshow("HP imgR", channels[0]);
-    imshow("HP imgI", channels[1]);
+    imshow("HP imgI", channels[1]);*/
 	dftQuadSwap(imgRI);
     Mat inverseTransform; 
     dft(imgRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
     normalize(inverseTransform, inverseTransform, 0, 1, CV_MINMAX);
-    imshow("High Pass", inverseTransform);
+	return inverseTransform;
 }
 
-void doLowPass(Mat img) {
+Mat doLowPass(Mat img) {
 	// Now construct a Gaussian kernel
     float sigma = 4.0;
     Mat kernelX   = getGaussianKernel(img.rows, sigma, CV_32FC1);
@@ -81,7 +69,7 @@ void doLowPass(Mat img) {
     Mat kernel  = kernelX * kernelY.t();
     Mat kernel_d = kernel.clone();
     normalize(kernel_d, kernel_d, 0, 1, CV_MINMAX);
-	imshow("Spatial Domain", kernel_d);
+	//imshow("Spatial Domain", kernel_d);
     // Build complex images for both the source image and the Gaussian kernel
     Mat imgPlanes[] = {Mat_<float>(img),    Mat::zeros(img.size(),    CV_32F)};
     Mat kerPlanes[] = {Mat_<float>(kernel), Mat::zeros(kernel.size(), CV_32F)};
@@ -91,36 +79,55 @@ void doLowPass(Mat img) {
     prdRI = imgRI.clone();
     dft(imgRI, imgRI, DFT_COMPLEX_OUTPUT);
     dft(kerRI, kerRI, DFT_COMPLEX_OUTPUT);
-	dftQuadSwap(imgRI);
+	/*dftQuadSwap(imgRI);
 	vector<Mat> channels(2);
 	split(imgRI, channels);
     imshow("LP imgR", channels[0]);
     imshow("LP imgI", channels[1]);
-	dftQuadSwap(imgRI);
+	dftQuadSwap(imgRI);*/
     mulSpectrums(imgRI, kerRI, prdRI, DFT_COMPLEX_OUTPUT);
     Mat inverseTransform; // broken because it takes inverse of original image
     dft(imgRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
     dft(prdRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
     dftQuadSwap(inverseTransform);
     normalize(inverseTransform, inverseTransform, 0, 1, CV_MINMAX);
-    imshow("Low pass", inverseTransform);
+	return inverseTransform;
 }
+
+void doSomethingCool(Mat img) {
+	vector<Mat> channels(3);
+	split(img, channels);
+	imshow("Blue channel", channels[0]);
+	imshow("Green channel", channels[1]);
+	imshow("Red channel", channels[2]);
+}
+
 
 int main(int argc, char ** argv)
 {
     //  Start by loading the image to be smoothed
-    const char* filename = argc >=2 ? argv[1] : "colostate_quad_bw_512.png";
-    Mat inImg = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
-    if( inImg.empty())
-        return -1;
+	const char* filename = argc >= 3 ? argv[2] : "colostate_quad_bw_512.png";
+	bool isColor = string(argv[1]) == "color";
+	cout<<argv[1]<<endl;
+	cout<<isColor<<endl;
     Mat img;                            //expand input image to optimal size
-    int m = getOptimalDFTSize( img.rows );
-    int n = getOptimalDFTSize( img.cols ); // on the border add zero values
-    copyMakeBorder(inImg, img, 0, m - img.rows, 0, n - img.cols, BORDER_CONSTANT, Scalar::all(0));
-    imshow("Padded Source Image", img);
-	doHighPass(img);
-    waitKey();
-	doLowPass(img);
-    waitKey();
+	if (isColor) 
+		img = imread(filename, CV_LOAD_IMAGE_COLOR);
+	else
+		img = imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
+    if( img.empty())
+        return -1;
+	int nChannels = img.channels();
+	if (isColor)
+		doSomethingCool(img);
+	else {
+		Mat bimg;
+		int m = getOptimalDFTSize( img.rows );
+		int n = getOptimalDFTSize( img.cols ); // on the border add zero values
+		copyMakeBorder(bimg, img, 0, m - img.rows, 0, n - img.cols, BORDER_CONSTANT, Scalar::all(0));
+		imshow("High Pass", doHighPass(bimg));
+		imshow("Low Pass", doLowPass(bimg));
+	}
+	waitKey();
     return 0;
 }

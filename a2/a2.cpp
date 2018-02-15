@@ -33,7 +33,7 @@ void switchLogScale(Mat& img) {
     log(img, img);
 }
 
-Mat doHighPass(Mat img) {
+Mat doHighPass(Mat img, int scale) {
     Mat imgPlanes[] = {Mat_<float>(img),    Mat::zeros(img.size(),    CV_32F)};
     Mat imgRI, prdRI;
     merge(imgPlanes, 2, imgRI);
@@ -41,7 +41,8 @@ Mat doHighPass(Mat img) {
     dft(imgRI, imgRI, DFT_COMPLEX_OUTPUT);
 	dftQuadSwap(imgRI);
     Point2i center(imgRI.rows/2,imgRI.cols/2);
-    circle(imgRI, center, 50, Scalar(0,0,0), -1);
+    circle(imgRI, center, imgRI.rows/scale, Scalar(0,0,0), -1);
+    cout << imgRI.rows/5 << endl;
 	/*vector<Mat> channels(2);
 	split(imgRI, channels);
     imshow("HP imgR", channels[0]);
@@ -60,8 +61,6 @@ Mat doLowPass(Mat img, float sigma) {
     Mat kernel  = kernelX * kernelY.t();
     Mat kernel_d = kernel.clone();
     normalize(kernel_d, kernel_d, 0, 1, CV_MINMAX);
-	//imshow("Spatial Domain", kernel_d);
-    // Build complex images for both the source image and the Gaussian kernel
     Mat imgPlanes[] = {Mat_<float>(img),    Mat::zeros(img.size(),    CV_32F)};
     Mat kerPlanes[] = {Mat_<float>(kernel), Mat::zeros(kernel.size(), CV_32F)};
     Mat imgRI, kerRI, prdRI;
@@ -70,12 +69,6 @@ Mat doLowPass(Mat img, float sigma) {
     prdRI = imgRI.clone();
     dft(imgRI, imgRI, DFT_COMPLEX_OUTPUT);
     dft(kerRI, kerRI, DFT_COMPLEX_OUTPUT);
-	/*dftQuadSwap(imgRI);
-	vector<Mat> channels(2);
-	split(imgRI, channels);
-    imshow("LP imgR", channels[0]);
-    imshow("LP imgI", channels[1]);
-	dftQuadSwap(imgRI);*/
     mulSpectrums(imgRI, kerRI, prdRI, DFT_COMPLEX_OUTPUT);
     Mat inverseTransform; // broken because it takes inverse of original image
     dft(imgRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
@@ -89,13 +82,12 @@ Mat doSomethingCool(Mat img) {
 	vector<Mat> channels(3);
 	split(img, channels);
 	Mat B = doLowPass(channels[0],0.01);
-	Mat G = doLowPass(channels[1],0.01);
-	Mat R = doLowPass(channels[2],16.0);
-	//Mat G = doHighPass(channels[1]);
-    //Mat R = doHighPass(channels[2]);
+	//Mat B = doHighPass(channels[0],40);
+	//Mat G = doLowPass(channels[1],0.01);
+	Mat R = doLowPass(channels[2],10.0);
+	Mat G = doHighPass(channels[1],40);
+    //Mat R = doHighPass(channels[2],40);
 	vector<Mat> input = {B, G, R};
-    cout << "B: " << B.size() << "G: " << G.size() << "channels[2]: " << channels[2].size() << endl;
-    cout << "B: " << B.depth() << "G: " << G.depth() << "channels[2]: " << channels[2].depth() << endl;
 	Mat output;
 	merge(input, output);
 	return output;
@@ -142,12 +134,13 @@ int main(int argc, char ** argv)
     if( inimg.empty())
         return -1;
 	if (isCool) {
-		Mat im2 = doHighPass(imggray);
+		Mat im2 = doHighPass(imggray,20);
 		imshow("original", img);
 		imshow("high-pass", im2);
+        imshow("Selective low pass", doSomethingCool(img));
 		imshow("cool", doSomethingCool2(img, im2));
 	} else {
-		imshow("High Pass", doHighPass(imggray));
+		imshow("High Pass", doHighPass(imggray,20));
 		imshow("Low Pass", doLowPass(imggray, 4.0));
 	}
 	waitKey();

@@ -61,9 +61,8 @@ Mat doHighPass(Mat img) {
 	return inverseTransform;
 }
 
-Mat doLowPass(Mat img) {
+Mat doLowPass(Mat img, float sigma) {
 	// Now construct a Gaussian kernel
-    float sigma = 4.0;
     Mat kernelX   = getGaussianKernel(img.rows, sigma, CV_32FC1);
     Mat kernelY   = getGaussianKernel(img.cols, sigma, CV_32FC1);
     Mat kernel  = kernelX * kernelY.t();
@@ -97,9 +96,14 @@ Mat doLowPass(Mat img) {
 Mat doSomethingCool(Mat img) {
 	vector<Mat> channels(3);
 	split(img, channels);
-	Mat B = doLowPass(channels[0]);
-	Mat G = doHighPass(channels[1]);
-	vector<Mat> input = {B, G, channels[2]};
+	Mat B = doLowPass(channels[0],0.01);
+	Mat G = doLowPass(channels[1],0.01);
+	Mat R = doLowPass(channels[2],16.0);
+	//Mat G = doHighPass(channels[1]);
+    //Mat R = doHighPass(channels[2]);
+	vector<Mat> input = {B, G, R};
+    cout << "B: " << B.size() << "G: " << G.size() << "channels[2]: " << channels[2].size() << endl;
+    cout << "B: " << B.depth() << "G: " << G.depth() << "channels[2]: " << channels[2].depth() << endl;
 	Mat output;
 	merge(input, output);
 	return output;
@@ -127,7 +131,7 @@ int main(int argc, char ** argv)
 		imshow("cool", doSomethingCool(img));
 	else {
 		imshow("High Pass", doHighPass(img));
-		imshow("Low Pass", doLowPass(img));
+		imshow("Low Pass", doLowPass(img, 4.0));
 	}
 	waitKey();
     return 0;

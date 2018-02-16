@@ -164,9 +164,10 @@ Mat doSomethingCool2(Mat img, Mat edges) {
 			int g = edges.at<cv::Vec3b>(i,j)[1];
 			int r = edges.at<cv::Vec3b>(i,j)[2];
 			float ratio = float(b+g+r) / float(3*255);
-            ratio = pow(ratio, pow((1.0 - ratio) * 2.0, 2.0));
+            //ratio = pow(ratio, pow((1.0 - ratio) * 2.0, 2.0));
             //cout << float(img.at<cv::Vec3b>(i,j)[1]) << " ratio: " << ratio << " " << float(b+g+r) << endl;
             ratio *= 255;
+            //img.at<cv::Vec3b>(i,j)[2] =  char(pow(float(img.at<cv::Vec3b>(i,j)[2]), pow((1.0 - ratio) * 2.0, 2.0)));
             img.at<cv::Vec3b>(i,j)[2] = char(ratio);
         }
 	}

@@ -145,7 +145,7 @@ Mat doSomethingCool(Mat img) {
 	Mat B = doLowPass(channels[0],1.0);
 	//Mat B = doHighPass(channels[0],40);
 	//Mat G = doLowPass(channels[1],0.01);
-	Mat R = doLowPass(channels[2],10.0);
+	Mat R = doLowPass(channels[2],8.0);
 	Mat G = doHighPass(channels[1],40);
     //Mat R = doHighPass(channels[2],40);
 	vector<Mat> input = {B, G, R};

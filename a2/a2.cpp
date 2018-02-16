@@ -81,7 +81,7 @@ Mat doLowPass(Mat img, float sigma) {
 Mat doSomethingCool(Mat img) {
 	vector<Mat> channels(3);
 	split(img, channels);
-	Mat B = doLowPass(channels[0],0.01);
+	Mat B = doLowPass(channels[0],1.0);
 	//Mat B = doHighPass(channels[0],40);
 	//Mat G = doLowPass(channels[1],0.01);
 	Mat R = doLowPass(channels[2],10.0);

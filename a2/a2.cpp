@@ -33,6 +33,24 @@ void switchLogScale(Mat& img) {
     log(img, img);
 }
 
+Mat getGaussian(int rows, int cols, float sigma, bool isFourier) {
+	Mat kerRI;
+	Mat kernelX   = getGaussianKernel(rows, sigma, CV_32FC1);
+	Mat kernelY   = getGaussianKernel(cols, sigma, CV_32FC1);
+	Mat kernel  = kernelX * kernelY.t();
+	Mat kernel_d = kernel.clone();
+	normalize(kernel_d, kernel_d, 0, 1, CV_MINMAX);
+	if (isFourier) {
+		Mat kerPlanes[] = {Mat_<float>(kernel), Mat::zeros(kernel.size(), CV_32F)};
+		merge(kerPlanes, 2, kerRI);
+		dft(kerRI, kerRI, DFT_COMPLEX_OUTPUT);
+		return kerRI;
+	} else {
+		return kernel_d;
+	}
+}
+
+//uses inverse gaussian
 Mat doHighPass(Mat img, int scale) {
     Mat imgPlanes[] = {Mat_<float>(img),    Mat::zeros(img.size(),    CV_32F)};
     Mat imgRI, prdRI;
@@ -54,21 +72,64 @@ Mat doHighPass(Mat img, int scale) {
 	return inverseTransform;
 }
 
-Mat doLowPass(Mat img, float sigma) {
-	// Now construct a Gaussian kernel
-    Mat kernelX   = getGaussianKernel(img.rows, sigma, CV_32FC1);
-    Mat kernelY   = getGaussianKernel(img.cols, sigma, CV_32FC1);
-    Mat kernel  = kernelX * kernelY.t();
-    Mat kernel_d = kernel.clone();
-    normalize(kernel_d, kernel_d, 0, 1, CV_MINMAX);
+//use this to display fourier domains to the user
+Mat getMag(Mat complex) {
+	Mat magI;
+	Mat planes[] = {
+			Mat::zeros(complex.size(), CV_32F),
+			Mat::zeros(complex.size(), CV_32F)
+	};
+	split(complex, planes); // planes[0] = Re(DFT(I)), planes[1] = Im(DFT(I))
+	magnitude(planes[0], planes[1], magI); // sqrt(Re(DFT(I))^2 + Im(DFT(I))^2)
+	// switch to logarithmic scale: log(1 + magnitude)
+	magI += Scalar::all(1);
+	log(magI, magI);
+	dftQuadSwap(magI); // rearrage quadrants
+	// Transform the magnitude matrix into a viewable image (float values 0-1)
+	normalize(magI, magI, 1, 0, NORM_INF);
+	return magI;
+}
+
+Mat medianToZero(Mat img) {
+	Mat copy = img.clone();
+	copy = copy.reshape(0,1);
+	vector<double> vecFromMat;
+	copy.copyTo(vecFromMat);
+	std::nth_element(vecFromMat.begin(), vecFromMat.begin() + vecFromMat.size() / 2, vecFromMat.end());
+	double median = vecFromMat[vecFromMat.size() / 2];
+	//cout << "median is " << median << endl;
+	//cout << "mean is " << mean(img) << endl;
+	return img - median;
+}
+
+Mat meanToZero(Mat img) {
+	Scalar ave = mean(img);
+	return img - ave;
+}
+
+//using inverse gaussian instead of circle
+Mat doHighPass2(Mat img, int sigma) {
     Mat imgPlanes[] = {Mat_<float>(img),    Mat::zeros(img.size(),    CV_32F)};
-    Mat kerPlanes[] = {Mat_<float>(kernel), Mat::zeros(kernel.size(), CV_32F)};
-    Mat imgRI, kerRI, prdRI;
+    Mat imgRI, inverseTransform, invkerRI, invgauss;
     merge(imgPlanes, 2, imgRI);
-    merge(kerPlanes, 2, kerRI);
+    dft(imgRI, imgRI, DFT_COMPLEX_OUTPUT);
+	invgauss = 1 - getGaussian(imgRI.rows, imgRI.cols, sigma, false);
+	Mat kerPlanes[] = {invgauss, Mat::zeros(invgauss.size(), CV_32F)};
+	merge(kerPlanes, 2, invkerRI);
+	dftQuadSwap(invkerRI);
+    mulSpectrums(imgRI, invkerRI, imgRI, DFT_COMPLEX_OUTPUT);
+    dft(imgRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
+    normalize(inverseTransform, inverseTransform, 0, 1, CV_MINMAX);
+	return inverseTransform;
+}
+
+Mat doLowPass(Mat img, float sigma) {
+    Mat imgPlanes[] = {Mat_<float>(img),    Mat::zeros(img.size(),    CV_32F)};
+    Mat imgRI, kerRI, prdRI;
+	kerRI = getGaussian(img.rows, img.cols, sigma, true);
+    merge(imgPlanes, 2, imgRI);
     prdRI = imgRI.clone();
     dft(imgRI, imgRI, DFT_COMPLEX_OUTPUT);
-    dft(kerRI, kerRI, DFT_COMPLEX_OUTPUT);
     mulSpectrums(imgRI, kerRI, prdRI, DFT_COMPLEX_OUTPUT);
     Mat inverseTransform; // broken because it takes inverse of original image
     dft(imgRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
@@ -95,19 +156,16 @@ Mat doSomethingCool(Mat img) {
 
 Mat doSomethingCool2(Mat img, Mat edges) {
 	// BGR to HSV
-	cvtColor(img, img, CV_BGR2HSV);    
-	for (int i=0; i < img.rows ; i++)
+	cvtColor(img, img, CV_BGR2HSV);for (int i=0; i < img.rows ; i++)
 	{
 		for(int j=0; j < img.cols; j++)
 		{
 			int b = edges.at<cv::Vec3b>(i,j)[0];
 			int g = edges.at<cv::Vec3b>(i,j)[1];
 			int r = edges.at<cv::Vec3b>(i,j)[2];
-			float ratio = float(b + g + r) / float(3 * 255) + 1;
-			int s = img.at<cv::Vec3b>(i,j)[1];
-			int s2 = s * ratio;
-			img.at<cv::Vec3b>(i,j)[1] = s2;
-		}
+			float ratio = float(b+g+r) / float(3);
+            img.at<cv::Vec3b>(i,j)[1] += ratio;
+        }
 	}
 	// HSV back to BGR
 	cvtColor(img, img, CV_HSV2BGR);
@@ -134,13 +192,13 @@ int main(int argc, char ** argv)
     if( inimg.empty())
         return -1;
 	if (isCool) {
-		Mat im2 = doHighPass(imggray,20);
+		Mat im2 = doHighPass2(imggray,20) - 0.5;
 		imshow("original", img);
 		imshow("high-pass", im2);
         imshow("Selective low pass", doSomethingCool(img));
 		imshow("cool", doSomethingCool2(img, im2));
 	} else {
-		imshow("High Pass", doHighPass(imggray,20));
+		imshow("High Pass", doHighPass2(imggray,40));
 		imshow("Low Pass", doLowPass(imggray, 4.0));
 	}
 	waitKey();

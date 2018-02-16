@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <math.h>
 
 using namespace cv;
 using namespace std;
@@ -162,8 +163,10 @@ Mat doSomethingCool2(Mat img, Mat edges) {
 			int b = edges.at<cv::Vec3b>(i,j)[0];
 			int g = edges.at<cv::Vec3b>(i,j)[1];
 			int r = edges.at<cv::Vec3b>(i,j)[2];
-			float ratio = float(b+g+r) / float(3);
-            //cout << float(img.at<cv::Vec3b>(i,j)[1]) << " ratio: " << int(ratio) << endl;
+			float ratio = float(b+g+r) / float(3*255);
+            ratio = pow(ratio, pow((1.0 - ratio) * 2.0, 2.0));
+            //cout << float(img.at<cv::Vec3b>(i,j)[1]) << " ratio: " << ratio << " " << float(b+g+r) << endl;
+            ratio *= 255;
             img.at<cv::Vec3b>(i,j)[2] = char(ratio);
         }
 	}

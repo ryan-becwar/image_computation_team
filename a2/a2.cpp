@@ -60,7 +60,6 @@ Mat doHighPass(Mat img, int scale) {
 	dftQuadSwap(imgRI);
     Point2i center(imgRI.rows/2,imgRI.cols/2);
     circle(imgRI, center, imgRI.rows/scale, Scalar(0,0,0), -1);
-    cout << imgRI.rows/5 << endl;
 	/*vector<Mat> channels(2);
 	split(imgRI, channels);
     imshow("HP imgR", channels[0]);
@@ -164,7 +163,8 @@ Mat doSomethingCool2(Mat img, Mat edges) {
 			int g = edges.at<cv::Vec3b>(i,j)[1];
 			int r = edges.at<cv::Vec3b>(i,j)[2];
 			float ratio = float(b+g+r) / float(3);
-            img.at<cv::Vec3b>(i,j)[1] += ratio;
+            //cout << float(img.at<cv::Vec3b>(i,j)[1]) << " ratio: " << int(ratio) << endl;
+            img.at<cv::Vec3b>(i,j)[2] = char(ratio);
         }
 	}
 	// HSV back to BGR

@@ -34,3 +34,10 @@ cs510 A3 program:
 		your system starts using the correlation filter from frame k to first identifiy the most likely position of the object in fram k+1 and build the next goal image accordinly. 
 	In other words, you may wish to build a tracker.
 
+
+
+TODO:
+    R:
+      Window Sizing
+      Tiling
+      Rolling Average of video frames

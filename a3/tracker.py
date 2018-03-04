@@ -29,6 +29,9 @@ if __name__ == '__main__':
     gaussianDim = 32
     gaussianSigma = 3
     threshold = 32
+    xOff = 350
+    yOff = 100
+    cropSize = 512
     cap = cv2.VideoCapture(sys.argv[1])
     if not cap.isOpened():
         cap.open()
@@ -37,6 +40,7 @@ if __name__ == '__main__':
         ret, frame = cap.read()
         if not ret:
             break
+        frame = frame[yOff:yOff+cropSize, xOff:xOff+cropSize]
         cv2.imshow('input', frame)
         x, y = stupidTrack(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), threshold)
         groundTruth = getGroundTruth(x, y, frame.shape[:-1], gaussianDim, gaussianSigma)

@@ -25,6 +25,15 @@ def getGroundTruth(x, y, dims, gaussianDim, gaussianSigma):
     return normal
 
 
+def getMaster(cropSize, frame, groundTruth, exactFilter, avgFilter):
+        master = np.zeros((cropSize*2, cropSize*2, 3))
+        master[0:cropSize, 0:cropSize,:] = frame / 255
+        master[0:cropSize, cropSize:cropSize*2,0] = groundTruth
+        master[0:cropSize, cropSize:cropSize*2,1] = groundTruth
+        master[0:cropSize, cropSize:cropSize*2,2] = groundTruth
+        return master
+
+
 if __name__ == '__main__':
     gaussianDim = 32
     gaussianSigma = 3
@@ -41,12 +50,14 @@ if __name__ == '__main__':
         if not ret:
             break
         frame = frame[yOff:yOff+cropSize, xOff:xOff+cropSize]
-        cv2.imshow('input', frame)
         x, y = stupidTrack(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), threshold)
         groundTruth = getGroundTruth(x, y, frame.shape[:-1], gaussianDim, gaussianSigma)
-        cv2.imshow('ground truth', groundTruth)
+        exactFilter = None
+        avgFilter = None
+        master = getMaster(cropSize, frame, groundTruth, exactFilter, avgFilter)
+        cv2.imshow('master', master)
 
-        if cv2.waitKey(20) & 0xFF == ord('q'):
+        if cv2.waitKey(17) & 0xFF == ord('q'):
             break
 
     cap.release()

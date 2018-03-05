@@ -1,6 +1,7 @@
 import cv2, sys
 import numpy as np
 
+SMOOTHING_FACTOR = 0.1
 
 def stupidTrack(img, thresh):
     """given a grayscale image and threshold, find the center of the
@@ -41,6 +42,13 @@ def getAvgFilter(exactFilter, sumFilters, N):
     np.add(sumFilters, exactFilter, out=sumFilters)
     return sumFilters / N, sumFilters
 
+def getExponentialFilter(exactFilter, sumFilters):
+    if sumFilters is None:
+        sumFilters = np.copy(exactFilter)
+    np.add(SMOOTHING_FACTOR * exactFilter, (1 - SMOOTHING_FACTOR) * sumFilters, out=sumFilters)
+    return sumFilters
+
+
 
 def getMaster(cropSize, frame, groundTruth, exactFilter, avgFilter):
     master = np.zeros((cropSize * 2, cropSize * 2))
@@ -59,6 +67,7 @@ if __name__ == '__main__':
     yOff = 100
     cropSize = 512
     sumFilters = None
+    avgFilter = None
     cap = cv2.VideoCapture(sys.argv[1])
     N = 0
     if not cap.isOpened():
@@ -74,7 +83,8 @@ if __name__ == '__main__':
         x, y = stupidTrack(gray, threshold) #ground truth x and y coords
         groundTruth = getGroundTruth(x, y, gray.shape, gaussianDim, gaussianSigma)
         exactFilter = getExactFilter(gray, groundTruth)
-        avgFilter, sumFilters = getAvgFilter(exactFilter, sumFilters, N)
+        #avgFilter, sumFilters = getAvgFilter(exactFilter, sumFilters, N)
+        avgFilter = getExponentialFilter(exactFilter, avgFilter)
         master = getMaster(cropSize, gray, groundTruth, exactFilter, avgFilter)
         cv2.imshow('master', master)
 

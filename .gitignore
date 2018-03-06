@@ -1,5 +1,11 @@
 a2
 *.swp
+.idea
+.idea/*
+__pycache__
+__pycache__/*
+.ipynb_checkpoints/
+.ipynb_checkpoints/*
 
 
 # Prerequisites
@@ -34,3 +40,4 @@ a2
 *.exe
 *.out
 *.app
+

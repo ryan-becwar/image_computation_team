@@ -24,16 +24,27 @@ def getGroundTruth(x, y, dims, gaussianDim, gaussianSigma):
     normal[y - halfGaussDim:y + halfGaussDim, x - halfGaussDim:x + halfGaussDim] = kernel
     return normal
 
+def convertToSpatial(fourier):
+    spatial = np.fft.ifft2(fourier)
+    shifted = np.fft.fftshift(np.abs(spatial) * 3000)
+    rotated = cv2.rotate(shifted, cv2.ROTATE_180)
+    return rotated
 
-def getExactFilter(gray, groundTruth):
-    lap = cv2.Laplacian(gray, cv2.CV_8U)
+def getExactFilter(lap, groundTruth):
     fourierF = np.fft.fft2(lap)
     fourierG = np.fft.fft2(groundTruth)
     fourierH = fourierG / fourierF
-    spatialH = np.fft.ifft2(fourierH)
-    shiftedH = np.fft.fftshift(np.abs(spatialH) * 3000)
-    rotatedH = cv2.rotate(shiftedH, cv2.ROTATE_180)
-    return rotatedH
+    return fourierH
+    #spatialH = np.fft.ifft2(fourierH)
+    #shiftedH = np.fft.fftshift(np.abs(spatialH) * 3000)
+    #rotatedH = cv2.rotate(shiftedH, cv2.ROTATE_180)
+    #return rotatedH
+
+def getLocation(lap, fourierH):
+    fourierF = np.fft.fft2(lap)
+    fourierG = fourierF * fourierH
+
+    return fourierG
 
 
 def getAvgFilter(exactFilter, sumFilters, N):
@@ -82,9 +93,19 @@ if __name__ == '__main__':
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         x, y = stupidTrack(gray, threshold) #ground truth x and y coords
         groundTruth = getGroundTruth(x, y, gray.shape, gaussianDim, gaussianSigma)
-        exactFilter = getExactFilter(gray, groundTruth)
+        lap = cv2.Laplacian(gray, cv2.CV_8U)
+        exactFilterFourier = getExactFilter(lap, groundTruth)
+        exactFilter = convertToSpatial(exactFilterFourier)
+
         #avgFilter, sumFilters = getAvgFilter(exactFilter, sumFilters, N)
-        avgFilter = getExponentialFilter(exactFilter, avgFilter)
+        avgFilterFourier = getExponentialFilter(exactFilterFourier, avgFilter)
+        avgFilter = convertToSpatial(avgFilterFourier)
+
+        locationOutFourier = getLocation(lap, exactFilterFourier)
+        locationOut = convertToSpatial(locationOutFourier)
+        cv2.imshow('tracked', locationOut)
+
+
         master = getMaster(cropSize, gray, groundTruth, exactFilter, avgFilter)
         cv2.imshow('master', master)
 

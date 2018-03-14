@@ -24,27 +24,22 @@ def getGroundTruth(x, y, dims, gaussianDim, gaussianSigma):
     normal[y - halfGaussDim:y + halfGaussDim, x - halfGaussDim:x + halfGaussDim] = kernel
     return normal
 
-def convertToSpatial(fourier):
-    spatial = np.fft.ifft2(fourier)
-    shifted = np.fft.fftshift(np.abs(spatial) * 3000)
-    rotated = cv2.rotate(shifted, cv2.ROTATE_180)
-    return rotated
 
-def getExactFilter(lap, groundTruth):
-    fourierF = np.fft.fft2(lap)
+def getExactFilter(gray, groundTruth):
+    blur = cv2.GaussianBlur(gray, (3, 3), 0, dst=None, sigmaY=0)
+    edge = cv2.Laplacian(blur, cv2.CV_8U)
+    #cv2.imshow('blur', blur)
+    #edgex = cv2.Sobel(blur, cv2.CV_64F, 1, 0)
+    #edgey = cv2.Sobel(blur, cv2.CV_64F, 0, 1)
+    #edge = np.abs(edgex)*0.1 + np.abs(edgey)*0.1
+    cv2.imshow('edges', edge)
+    fourierF = np.fft.fft2(edge)
     fourierG = np.fft.fft2(groundTruth)
     fourierH = fourierG / fourierF
-    return fourierH
-    #spatialH = np.fft.ifft2(fourierH)
-    #shiftedH = np.fft.fftshift(np.abs(spatialH) * 3000)
-    #rotatedH = cv2.rotate(shiftedH, cv2.ROTATE_180)
-    #return rotatedH
-
-def getLocation(lap, fourierH):
-    fourierF = np.fft.fft2(lap)
-    fourierG = fourierF * fourierH
-
-    return fourierG
+    spatialH = np.fft.ifft2(fourierH)
+    shiftedH = np.fft.fftshift(np.abs(spatialH) * 4000)
+    rotatedH = cv2.rotate(shiftedH, cv2.ROTATE_180)
+    return rotatedH
 
 
 def getAvgFilter(exactFilter, sumFilters, N):
@@ -53,6 +48,7 @@ def getAvgFilter(exactFilter, sumFilters, N):
     np.add(sumFilters, exactFilter, out=sumFilters)
     return sumFilters / N, sumFilters
 
+
 def getExponentialFilter(exactFilter, sumFilters):
     if sumFilters is None:
         sumFilters = np.copy(exactFilter)
@@ -60,13 +56,14 @@ def getExponentialFilter(exactFilter, sumFilters):
     return sumFilters
 
 
-
-def getMaster(cropSize, frame, groundTruth, exactFilter, avgFilter):
-    master = np.zeros((cropSize * 2, cropSize * 2))
-    master[0:cropSize, 0:cropSize] = frame / 255
-    master[0:cropSize, cropSize:cropSize * 2] = groundTruth
-    master[cropSize:cropSize * 2, 0:cropSize] = exactFilter
-    master[cropSize:cropSize * 2, cropSize:cropSize * 2] = avgFilter
+def getMaster(frame, groundTruth, exactFilter, avgFilter):
+    h = frame.shape[0]
+    w = frame.shape[1]
+    master = np.zeros((h * 2, w * 2))
+    master[0:h, 0:w] = frame / 255
+    master[0:h, w:w * 2] = groundTruth
+    master[h:h * 2, 0:w] = exactFilter
+    master[h:h * 2, w:w * 2] = avgFilter
     return master
 
 
@@ -74,8 +71,8 @@ if __name__ == '__main__':
     gaussianDim = 32
     gaussianSigma = 3
     threshold = 32
-    xOff = 350
-    yOff = 100
+    xOff = 300
+    yOff = 0
     cropSize = 512
     sumFilters = None
     avgFilter = None
@@ -93,20 +90,10 @@ if __name__ == '__main__':
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         x, y = stupidTrack(gray, threshold) #ground truth x and y coords
         groundTruth = getGroundTruth(x, y, gray.shape, gaussianDim, gaussianSigma)
-        lap = cv2.Laplacian(gray, cv2.CV_8U)
-        exactFilterFourier = getExactFilter(lap, groundTruth)
-        exactFilter = convertToSpatial(exactFilterFourier)
-
+        exactFilter = getExactFilter(gray, groundTruth)
         #avgFilter, sumFilters = getAvgFilter(exactFilter, sumFilters, N)
-        avgFilterFourier = getExponentialFilter(exactFilterFourier, avgFilter)
-        avgFilter = convertToSpatial(avgFilterFourier)
-
-        locationOutFourier = getLocation(lap, exactFilterFourier)
-        locationOut = convertToSpatial(locationOutFourier)
-        cv2.imshow('tracked', locationOut)
-
-
-        master = getMaster(cropSize, gray, groundTruth, exactFilter, avgFilter)
+        avgFilter = getExponentialFilter(exactFilter, avgFilter)
+        master = getMaster(gray, groundTruth, exactFilter, avgFilter)
         cv2.imshow('master', master)
 
         if cv2.waitKey(17) & 0xFF == ord('q'):

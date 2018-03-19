@@ -97,12 +97,14 @@ if __name__ == '__main__':
         exactFilterFourier = getExactFilter(lap, groundTruth)
         exactFilter = convertToSpatial(exactFilterFourier)
 
-        #avgFilter, sumFilters = getAvgFilter(exactFilter, sumFilters, N)
-        avgFilterFourier = getExponentialFilter(exactFilterFourier, avgFilter)
-        avgFilter = convertToSpatial(avgFilterFourier)
+        avgFilterSum, sumFilters = getAvgFilter(exactFilter, sumFilters, N)
+        #avgFilterFourier = getExponentialFilter(exactFilterFourier, avgFilter)
+        avgFilter = getExponentialFilter(exactFilter, avgFilter)
+        #avgFilter = convertToSpatial(avgFilterFourier)
 
         locationOutFourier = getLocation(lap, exactFilterFourier)
         locationOut = convertToSpatial(locationOutFourier)
+        cv2.imshow('sumFilter', avgFilterSum)
         cv2.imshow('tracked', locationOut)
 
 

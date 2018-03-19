@@ -111,6 +111,7 @@ Mat meanToZero(Mat img) {
 Mat doHighPass2(Mat img, int sigma) {
     Mat imgPlanes[] = {Mat_<float>(img),    Mat::zeros(img.size(),    CV_32F)};
     Mat imgRI, inverseTransform, invkerRI, invgauss;
+           
     merge(imgPlanes, 2, imgRI);
     dft(imgRI, imgRI, DFT_COMPLEX_OUTPUT);
 	invgauss = 1 - getGaussian(imgRI.rows, imgRI.cols, sigma, false);
@@ -120,6 +121,16 @@ Mat doHighPass2(Mat img, int sigma) {
     mulSpectrums(imgRI, invkerRI, imgRI, DFT_COMPLEX_OUTPUT);
     dft(imgRI, inverseTransform, cv::DFT_INVERSE|cv::DFT_REAL_OUTPUT);
     normalize(inverseTransform, inverseTransform, 0, 1, CV_MINMAX);
+    //cout << imgRI << endl;
+    Mat complexx[] = {Mat::zeros(img.size(), CV_32F),    Mat::zeros(img.size(),    CV_32F)};
+    split(imgRI, complexx);
+    imshow(complexx[0]);
+    imshow(complexx[1]);
+    for(int j=0; j<complexx[1].cols; j++){
+        for(int i=0; i<complexx[1].rows;i++){
+           cout << "real: " << complexx[0].at<cv::Vec3b>(i,j) << " im: " << complexx[1].at<cv::Vec3b>(i,j) << endl;
+        }
+    }
 	return inverseTransform;
 }
 
@@ -160,15 +171,14 @@ Mat doSomethingCool2(Mat img, Mat edges) {
 	{
 		for(int j=0; j < img.cols; j++)
 		{
-			int b = edges.at<cv::Vec3b>(i,j)[0];
-			int g = edges.at<cv::Vec3b>(i,j)[1];
-			int r = edges.at<cv::Vec3b>(i,j)[2];
+			int b = float(edges.at<cv::Vec3b>(i,j)[0]);
+			int g = float(edges.at<cv::Vec3b>(i,j)[1]);
+			int r = float(edges.at<cv::Vec3b>(i,j)[2]);
 			float ratio = float(b+g+r) / float(3*255);
             //ratio = pow(ratio, pow((1.0 - ratio) * 2.0, 2.0));
-            //cout << float(img.at<cv::Vec3b>(i,j)[1]) << " ratio: " << ratio << " " << float(b+g+r) << endl;
-            ratio *= 255;
+            //cout << b << " " << float(img.at<cv::Vec3b>(i,j)[1]) << " ratio: " << ratio << " " << int(ratio*255) << " bgr: " << float(b+g+r) << endl;
             //img.at<cv::Vec3b>(i,j)[2] =  char(pow(float(img.at<cv::Vec3b>(i,j)[2]), pow((1.0 - ratio) * 2.0, 2.0)));
-            img.at<cv::Vec3b>(i,j)[2] = char(ratio);
+            img.at<cv::Vec3b>(i,j)[2] = uchar(ratio*255);
         }
 	}
 	// HSV back to BGR

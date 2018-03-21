@@ -26,18 +26,22 @@ def getGroundTruth(x, y, dims, gaussianDim, gaussianSigma):
 
 
 def getExactFilter(gray, groundTruth):
-    blur = cv2.GaussianBlur(gray, (3, 3), 0, dst=None, sigmaY=0)
-    edge = cv2.Laplacian(blur, cv2.CV_8U)
+    #blur = cv2.GaussianBlur(gray, (3, 3), 0, dst=None, sigmaY=0)
+    #edge = cv2.Laplacian(blur, cv2.CV_8U)
     #cv2.imshow('blur', blur)
     #edgex = cv2.Sobel(blur, cv2.CV_64F, 1, 0)
     #edgey = cv2.Sobel(blur, cv2.CV_64F, 0, 1)
     #edge = np.abs(edgex)*0.1 + np.abs(edgey)*0.1
+    edge = np.empty((0,0))
+    inter = np.log(gray.astype('float64') + 1)
+    inter2 = (inter - np.amin(inter)) / np.amax(inter)
+    edge = cv2.createHanningWindow((inter2.shape[1], inter2.shape[0]), cv2.CV_64F) * inter2
     cv2.imshow('edges', edge)
     fourierF = np.fft.fft2(edge)
     fourierG = np.fft.fft2(groundTruth)
     fourierH = fourierG / fourierF
-    spatialH = np.fft.ifft2(fourierH)
-    shiftedH = np.fft.fftshift(np.abs(spatialH) * 4000)
+    spatialH = np.fft.ifft2(fourierH) * 4
+    shiftedH = np.fft.fftshift(np.abs(spatialH))
     rotatedH = cv2.rotate(shiftedH, cv2.ROTATE_180)
     return rotatedH
 

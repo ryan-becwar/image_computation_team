@@ -11,12 +11,12 @@ def midpoint(p1, p2):
 
 
 if __name__ == '__main__':
-    gaussianDim = 64
-    gaussianSigma = 3
+    gaussianDim = 32
+    gaussianSigma = 1.5
     sumFilters = None
     avgFilter = None
     video = cv2.VideoCapture(0)
-    out = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 30, (int(video.get(3))*2,int(video.get(4))*2), isColor=False)
+    #out = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 30, (int(video.get(3))*2,int(video.get(4))*2), isColor=False)
     if not video.isOpened():
         print("Could not open video")
         sys.exit()
@@ -47,11 +47,11 @@ if __name__ == '__main__':
             cv2.rectangle(gray, p1, p2, (255, 0, 0), 2, 1)
             master = getMaster(gray, groundTruth, exactFilter, avgFilter)
             cv2.imshow('master', master)
-            out.write(master)
+            #out.write(master)
             k = cv2.waitKey(1) & 0xff
             if k == 27:
                 isDone = True
                 break
 
     video.release()
-    out.release()
+    #out.release()

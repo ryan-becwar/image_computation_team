@@ -13,6 +13,9 @@ def midpoint(p1, p2):
 def unmidpoint(x, y, w, h):
     return (x - int(w/2), y - int(h/2)), (x + int(w/2), y + int(w/2))
 
+def quickNorm(img):
+    return cv2.normalize(img, None, -1, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
+
 if __name__ == '__main__':
     gaussianDim = 32
     gaussianSigma = 1.5
@@ -42,13 +45,21 @@ if __name__ == '__main__':
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             if useASEF:
                 _f = getLittleF(gray)
-                #_f = np.fft.ifftshift(_f)
-                cv2.imshow('littlef', _f)
-                F = np.fft.fft2(_f)
-                H = np.fft.fft2(avgFilter)
-                G = F * H
-                _g = np.fft.ifft2(G)
-                cv2.imshow('littleg', cv2.normalize(np.real(_g), None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1))
+                #cv2.imshow('littlef', _f)
+                #F = np.fft.fft2(_f)
+                #F = cv2.dft(_f, None, cv2.DFT_COMPLEX_OUTPUT)
+                #H = np.fft.fft2(avgFilter)
+                #H = cv2.dft(avgFilter, None, cv2.DFT_COMPLEX_OUTPUT)
+                #G = F * H
+                #G = cv2.mulSpectrums(F, H, cv2.DFT_COMPLEX_OUTPUT)
+                #_g = np.fft.ifft2(G)
+                #_g = cv2.idft(G, None, cv2.DFT_REAL_OUTPUT)
+                #cv2.imshow('littleg', cv2.normalize(_g, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1))
+                _f = quickNorm(_f)
+                avgFilter = quickNorm(avgFilter)
+                _g = cv2.filter2D(_f, cv2.CV_64FC1, avgFilter, borderType=cv2.BORDER_WRAP)
+                _g = cv2.normalize(_g, None, -1, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
+                cv2.imshow('littleg', _g)
                 x, y = np.unravel_index(np.argmax(_g), _g.shape)
                 groundTruth = getGroundTruth(x, y, gray.shape, gaussianDim, gaussianSigma)
                 exactFilter = getExactFilter(gray, groundTruth)

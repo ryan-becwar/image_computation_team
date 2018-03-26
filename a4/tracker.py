@@ -32,22 +32,23 @@ def getGroundTruth(x, y, dims, gaussianDim, gaussianSigma):
 def getLittleF(gray):
     #inter = np.log(gray.astype('float64') + 1)
     #inter2 = cv2.normalize(inter, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
-    #return cv2.createHanningWindow((inter2.shape[1], inter2.shape[0]), cv2.CV_64F) * inter2
+    #return cv2.createHanningWindow((inter2.shape[1], inter2.shape[0]), cv2.CV_64FC1) * inter2
     #return cv2.Laplacian(gray, cv2.CV_8UC1)
     sx = cv2.Sobel(gray, cv2.CV_8UC1, 1, 0)
     sy = cv2.Sobel(gray, cv2.CV_8UC1, 0, 1)
     s = cv2.addWeighted(sx, 0.5, sy, 0.5, 0)
-    #hanning = cv2.createHanningWindow((s.shape[1], s.shape[0]), cv2.CV_8UC1) * s
-    return s
+    s = cv2.normalize(s, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
+    hanning = cv2.createHanningWindow((s.shape[1], s.shape[0]), cv2.CV_64FC1) * s
+    return hanning
 
 
 def getExactFilter(gray, groundTruth):
-    fourierF = np.fft.fft2(getLittleF(gray)) + 0.1
+    fourierF = np.fft.fft2(getLittleF(gray))
     fourierG = np.fft.fft2(groundTruth)
     fourierH = fourierG / fourierF
     spatialH = np.fft.ifft2(fourierH)
     shiftedH = np.fft.fftshift(np.abs(spatialH))
-    rotatedH = cv2.normalize(cv2.rotate(shiftedH, cv2.ROTATE_180), None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
+    rotatedH = cv2.normalize(cv2.rotate(shiftedH, cv2.ROTATE_180), None, -1, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
     return rotatedH
 
 
@@ -62,17 +63,20 @@ def getExponentialFilter(exactFilter, sumFilters):
     if sumFilters is None:
         sumFilters = np.copy(exactFilter)
     np.add(SMOOTHING_FACTOR * exactFilter, (1 - SMOOTHING_FACTOR) * sumFilters, out=sumFilters)
-    return cv2.normalize(sumFilters, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
+    return cv2.normalize(sumFilters, None, -1, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
 
+
+def quickNorm255(img):
+    return cv2.normalize(img, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
 
 def getMaster(frame, groundTruth, exactFilter, avgFilter):
     h = frame.shape[0]
     w = frame.shape[1]
     master = np.zeros((h * 2, w * 2))
-    master[0:h, 0:w] = frame / 255
-    master[0:h, w:w * 2] = groundTruth
-    master[h:h * 2, 0:w] = exactFilter
-    master[h:h * 2, w:w * 2] = avgFilter
+    master[0:h, 0:w] = quickNorm255(frame)
+    master[0:h, w:w * 2] = quickNorm255(groundTruth)
+    master[h:h * 2, 0:w] = quickNorm255(exactFilter)
+    master[h:h * 2, w:w * 2] = quickNorm255(avgFilter)
     return master
 
 

@@ -21,24 +21,33 @@ def getGroundTruth(x, y, dims, gaussianDim, gaussianSigma):
     halfGaussDim = int(gaussianDim / 2)
     normal = np.zeros(dims)
     kernel = getGaussian(gaussianDim, gaussianDim, gaussianSigma) * 255
+    y = halfGaussDim if y < halfGaussDim else y
+    y = dims[0] - halfGaussDim if y > dims[0] - halfGaussDim else y
+    x = halfGaussDim if x < halfGaussDim else x
+    x = dims[1] - halfGaussDim if x > dims[1] - halfGaussDim else x
     normal[y - halfGaussDim:y + halfGaussDim, x - halfGaussDim:x + halfGaussDim] = kernel
     return normal
 
 
+def getLittleF(gray):
+    #inter = np.log(gray.astype('float64') + 1)
+    #inter2 = cv2.normalize(inter, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
+    #return cv2.createHanningWindow((inter2.shape[1], inter2.shape[0]), cv2.CV_64F) * inter2
+    #return cv2.Laplacian(gray, cv2.CV_8UC1)
+    sx = cv2.Sobel(gray, cv2.CV_8UC1, 1, 0)
+    sy = cv2.Sobel(gray, cv2.CV_8UC1, 0, 1)
+    s = cv2.addWeighted(sx, 0.5, sy, 0.5, 0)
+    #hanning = cv2.createHanningWindow((s.shape[1], s.shape[0]), cv2.CV_8UC1) * s
+    return s
+
+
 def getExactFilter(gray, groundTruth):
-    blur = cv2.GaussianBlur(gray, (3, 3), 0, dst=None, sigmaY=0)
-    edge = cv2.Laplacian(blur, cv2.CV_8U)
-    #cv2.imshow('blur', blur)
-    #edgex = cv2.Sobel(blur, cv2.CV_64F, 1, 0)
-    #edgey = cv2.Sobel(blur, cv2.CV_64F, 0, 1)
-    #edge = np.abs(edgex)*0.1 + np.abs(edgey)*0.1
-    cv2.imshow('edges', edge)
-    fourierF = np.fft.fft2(edge)
+    fourierF = np.fft.fft2(getLittleF(gray)) + 0.1
     fourierG = np.fft.fft2(groundTruth)
     fourierH = fourierG / fourierF
     spatialH = np.fft.ifft2(fourierH)
-    shiftedH = np.fft.fftshift(np.abs(spatialH) * 4000)
-    rotatedH = cv2.rotate(shiftedH, cv2.ROTATE_180)
+    shiftedH = np.fft.fftshift(np.abs(spatialH))
+    rotatedH = cv2.normalize(cv2.rotate(shiftedH, cv2.ROTATE_180), None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
     return rotatedH
 
 
@@ -53,7 +62,7 @@ def getExponentialFilter(exactFilter, sumFilters):
     if sumFilters is None:
         sumFilters = np.copy(exactFilter)
     np.add(SMOOTHING_FACTOR * exactFilter, (1 - SMOOTHING_FACTOR) * sumFilters, out=sumFilters)
-    return sumFilters
+    return cv2.normalize(sumFilters, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
 
 
 def getMaster(frame, groundTruth, exactFilter, avgFilter):

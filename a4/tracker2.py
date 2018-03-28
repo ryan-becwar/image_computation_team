@@ -9,26 +9,43 @@ from tracker import *
 def quickNorm(img):
     return cv2.normalize(img, None, -1, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
 
+def updateSmoothing(x):
+    global SMOOTHING_FACTOR
+    SMOOTHING_FACTOR = x/10
+
+def updateSigma(x):
+    global gaussianSigma
+    gaussianSigma = x
+
+gaussianDim = 64
+gaussianSigma = 2
+
 if __name__ == '__main__':
-    gaussianDim = 32
-    gaussianSigma = 1.5
     sumFilters = None
     avgFilter = None
     video = cv2.VideoCapture(0)
     if not video.isOpened():
         print("Could not open video")
         sys.exit()
-    ok, frame = video.read()
-    time.sleep(1)
-    ok, frame = video.read()
+    print("Warming up webcam...")
+    for i in range(0, 60):
+        ok, frame = video.read()
+    cv2.flip(frame, 1, frame)
     if not ok:
         print('Cannot read video file')
         sys.exit()
     isDone = False
     useASEF = False
+    _g = None
+    _f = None
+    cv2.namedWindow('interface', cv2.WINDOW_AUTOSIZE)
+    cv2.createTrackbar('sigma', 'interface', gaussianSigma, 60, updateSigma)
+    cv2.createTrackbar('smoothing', 'interface', int(10 * SMOOTHING_FACTOR), 10, updateSmoothing)
+    startTime = 0
     while not isDone:
         tracker = cv2.TrackerKCF_create()
-        bbox = cv2.selectROI(frame, False)
+        bbox = cv2.selectROI('Initialize KCF Tracker', frame, True, True)
+        cv2.destroyWindow('Initialize KCF Tracker')
         ok = tracker.init(frame, bbox)
         w = int(bbox[2])
         h = int(bbox[3])
@@ -37,24 +54,13 @@ if __name__ == '__main__':
             if not ok: # video finished
                 isDone = True
                 break
+            cv2.flip(frame, 1, frame)
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             if useASEF:
                 _f = getLittleF(gray)
-                #cv2.imshow('littlef', _f)
-                #F = np.fft.fft2(_f)
-                #F = cv2.dft(_f, None, cv2.DFT_COMPLEX_OUTPUT)
-                #H = np.fft.fft2(avgFilter)
-                #H = cv2.dft(avgFilter, None, cv2.DFT_COMPLEX_OUTPUT)
-                #G = F * H
-                #G = cv2.mulSpectrums(F, H, cv2.DFT_COMPLEX_OUTPUT)
-                #_g = np.fft.ifft2(G)
-                #_g = cv2.idft(G, None, cv2.DFT_REAL_OUTPUT)
-                #cv2.imshow('littleg', cv2.normalize(_g, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1))
-                _f = quickNorm(_f)
                 avgFilter = quickNorm(avgFilter)
+
                 _g = cv2.filter2D(_f, cv2.CV_64FC1, avgFilter, borderType=cv2.BORDER_WRAP)
-                _g = quickNorm(_g)
-                cv2.imshow('littleg', _g)
                 y, x = np.unravel_index(np.argmax(_g), _g.shape)
                 groundTruth = getGroundTruth(x, y, gray.shape, gaussianDim, gaussianSigma)
                 exactFilter = getExactFilter(gray, groundTruth)
@@ -74,9 +80,11 @@ if __name__ == '__main__':
                 exactFilter = getExactFilter(gray, groundTruth)
                 avgFilter = getExponentialFilter(exactFilter, avgFilter)
             cv2.rectangle(gray, p1, p2, (255, 0, 0), 2, 1)
-            master = getMaster(gray, groundTruth, exactFilter, avgFilter)
+            master = getMaster(gray, groundTruth, exactFilter, avgFilter, _g, _f)
+            fps = 'FPS: ' + ('%d' % (1 / (time.time() - startTime)))
+            cv2.putText(master, fps, (30,30), cv2.FONT_HERSHEY_COMPLEX, 1, (255,255,255))
             cv2.imshow('master', master)
-            cv2.moveWindow('master', master.shape[1] + 10, 0)
+            startTime = time.time()
             k = cv2.waitKey(1) & 0xff
             if k == ord('a'): # space to toggle ASEF/MOSSE tracking
                 useASEF = not useASEF

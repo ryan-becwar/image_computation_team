@@ -30,10 +30,6 @@ def getGroundTruth(x, y, dims, gaussianDim, gaussianSigma):
 
 
 def getLittleF(gray):
-    #inter = np.log(gray.astype('float64') + 1)
-    #inter2 = cv2.normalize(inter, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
-    #return cv2.createHanningWindow((inter2.shape[1], inter2.shape[0]), cv2.CV_64FC1) * inter2
-    #return cv2.Laplacian(gray, cv2.CV_8UC1)
     sx = cv2.Sobel(gray, cv2.CV_8UC1, 1, 0)
     sy = cv2.Sobel(gray, cv2.CV_8UC1, 0, 1)
     s = cv2.addWeighted(sx, 0.5, sy, 0.5, 0)
@@ -69,14 +65,19 @@ def getExponentialFilter(exactFilter, sumFilters):
 def quickNorm255(img):
     return cv2.normalize(img, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
 
-def getMaster(frame, groundTruth, exactFilter, avgFilter):
+def getMaster(frame, groundTruth, exactFilter, avgFilter, calcG=None, edges=None):
     h = frame.shape[0]
     w = frame.shape[1]
-    master = np.zeros((h * 2, w * 2))
+    calcG = np.zeros((h,w)) if calcG is None else calcG
+    edges = np.zeros((h,w)) if edges is None else edges
+    master = np.zeros((h * 2, w * 3))
     master[0:h, 0:w] = quickNorm255(frame)
     master[0:h, w:w * 2] = quickNorm255(groundTruth)
+    master[0:h, w * 2:w * 3] = quickNorm255(calcG)
     master[h:h * 2, 0:w] = quickNorm255(exactFilter)
     master[h:h * 2, w:w * 2] = quickNorm255(avgFilter)
+    master[h:h * 2, w * 2:w * 3] = quickNorm255(edges)
+
     return master
 
 

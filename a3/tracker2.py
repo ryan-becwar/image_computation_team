@@ -3,6 +3,7 @@
 import cv2
 import sys
 import numpy as np
+import time
 from tracker import *
 
 
@@ -16,15 +17,16 @@ if __name__ == '__main__':
     sumFilters = None
     avgFilter = None
     video = cv2.VideoCapture(0)
-    #out = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 30, (int(video.get(3))*2,int(video.get(4))*2), isColor=False)
     if not video.isOpened():
         print("Could not open video")
         sys.exit()
+    time.sleep(1)
     ok, frame = video.read()
     if not ok:
         print('Cannot read video file')
         sys.exit()
     isDone = False
+    useASEF = False
     while not isDone:
         tracker = cv2.TrackerKCF_create()
         bbox = cv2.selectROI(frame, False)
@@ -47,11 +49,9 @@ if __name__ == '__main__':
             cv2.rectangle(gray, p1, p2, (255, 0, 0), 2, 1)
             master = getMaster(gray, groundTruth, exactFilter, avgFilter)
             cv2.imshow('master', master)
-            #out.write(master)
+            cv2.moveWindow('master', frame.shape[0] + 10, 0)
             k = cv2.waitKey(1) & 0xff
             if k == 27:
                 isDone = True
                 break
-
     video.release()
-    #out.release()

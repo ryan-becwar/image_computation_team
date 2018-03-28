@@ -6,13 +6,6 @@ import numpy as np
 import time
 from tracker import *
 
-
-def midpoint(p1, p2):
-    return int((p1[0] + p2[0]) / 2), int((p1[1] + p2[1]) / 2)
-
-def unmidpoint(x, y, w, h):
-    return (x - int(w/2), y - int(h/2)), (x + int(w/2), y + int(w/2))
-
 def quickNorm(img):
     return cv2.normalize(img, None, -1, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
 
@@ -37,6 +30,8 @@ if __name__ == '__main__':
         tracker = cv2.TrackerKCF_create()
         bbox = cv2.selectROI(frame, False)
         ok = tracker.init(frame, bbox)
+        w = int(bbox[2])
+        h = int(bbox[3])
         while True:
             ok, frame = video.read()
             if not ok: # video finished
@@ -58,26 +53,27 @@ if __name__ == '__main__':
                 _f = quickNorm(_f)
                 avgFilter = quickNorm(avgFilter)
                 _g = cv2.filter2D(_f, cv2.CV_64FC1, avgFilter, borderType=cv2.BORDER_WRAP)
-                _g = cv2.normalize(_g, None, -1, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
+                _g = quickNorm(_g)
                 cv2.imshow('littleg', _g)
-                x, y = np.unravel_index(np.argmax(_g), _g.shape)
+                y, x = np.unravel_index(np.argmax(_g), _g.shape)
                 groundTruth = getGroundTruth(x, y, gray.shape, gaussianDim, gaussianSigma)
                 exactFilter = getExactFilter(gray, groundTruth)
-                avgFilter = avgFilter
+                avgFilter = getExponentialFilter(exactFilter, avgFilter)
+                w2 = int(w/2)
+                h2 = int(h/2)
+                p1 = (x - w2, y - h2)
+                p2 = (x + w2, y + h2)
             else:
                 ok, bbox = tracker.update(frame)
                 if not ok: # tracker failed, get user input
                     break
                 p1 = (int(bbox[0]), int(bbox[1]))
-                p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
-                h = int(bbox[2]) - int(bbox[0])
-                w = int(bbox[3]) - int(bbox[1])
-                x, y = midpoint(p1, p2)
-
+                p2 = (int(bbox[0] + w), int(bbox[1] + h))
+                x, y = p1[0] + int(w/2), p1[1] + int(h/2)
                 groundTruth = getGroundTruth(x, y, gray.shape, gaussianDim, gaussianSigma)
                 exactFilter = getExactFilter(gray, groundTruth)
                 avgFilter = getExponentialFilter(exactFilter, avgFilter)
-            cv2.rectangle(gray, (x,y), p2, (255, 0, 0), 2, 1)
+            cv2.rectangle(gray, p1, p2, (255, 0, 0), 2, 1)
             master = getMaster(gray, groundTruth, exactFilter, avgFilter)
             cv2.imshow('master', master)
             cv2.moveWindow('master', master.shape[1] + 10, 0)

@@ -58,10 +58,6 @@ if __name__ == '__main__':
                 break
             p1 = (int(bbox[0]), int(bbox[1]))
             p2 = (int(bbox[0] + w), int(bbox[1] + h))
-            x, y = p1[0] + int(w/2), p1[1] + int(h/2)
-            groundTruth = getGroundTruth(x, y, gray.shape, gaussianDim, gaussianSigma)
-            exactFilter = getExactFilter(gray, groundTruth)
-            avgFilter = getExponentialFilter(exactFilter, avgFilter)
 
             cv2.rectangle(gray, p1, p2, (255, 0, 0), 2, 1)
             fps = 'FPS: ' + ('%d' % (1 / (time.time() - startTime)))

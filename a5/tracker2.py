@@ -24,6 +24,9 @@ if __name__ == '__main__':
     sumFilters = None
     avgFilter = None
     video = cv2.VideoCapture(0)
+    video.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    video.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    video.set(cv2.CAP_PROP_FPS, 60)
     if not video.isOpened():
         print("Could not open video")
         sys.exit()
@@ -35,7 +38,6 @@ if __name__ == '__main__':
         print('Cannot read video file')
         sys.exit()
     isDone = False
-    cv2.namedWindow('interface', cv2.WINDOW_AUTOSIZE)
     startTime = 0
     while not isDone:
         tracker = cv2.TrackerKCF_create()
@@ -50,7 +52,8 @@ if __name__ == '__main__':
                 isDone = True
                 break
             cv2.flip(frame, 1, frame)
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            #gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray = frame
 
             #Update kcf tracker
             ok, bbox = tracker.update(frame)
@@ -59,15 +62,11 @@ if __name__ == '__main__':
             p1 = (int(bbox[0]), int(bbox[1]))
             p2 = (int(bbox[0] + w), int(bbox[1] + h))
             x, y = p1[0] + int(w/2), p1[1] + int(h/2)
-            groundTruth = getGroundTruth(x, y, gray.shape, gaussianDim, gaussianSigma)
-            exactFilter = getExactFilter(gray, groundTruth)
-            avgFilter = getExponentialFilter(exactFilter, avgFilter)
-
             cv2.rectangle(gray, p1, p2, (255, 0, 0), 2, 1)
-            fps = 'FPS: ' + ('%d' % (1 / (time.time() - startTime)))
-            cv2.putText(gray, fps, (30,30), cv2.FONT_HERSHEY_COMPLEX, 1, (255,255,255))
+            #fps = 'FPS: ' + ('%d' % (1 / (time.time() - startTime)))
+            #cv2.putText(gray, fps, (30,30), cv2.FONT_HERSHEY_COMPLEX, 1, (255,255,255))
             cv2.imshow('gray', gray)
-            startTime = time.time()
+            #startTime = time.time()
             k = cv2.waitKey(1) & 0xff
             if k == ord('q'): # esc to quit
                 isDone = True

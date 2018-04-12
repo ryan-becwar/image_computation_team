@@ -1,0 +1,43 @@
+cs510 A3 program:
+	input:
+		video 
+		ground truth center of tracking object
+	output:
+		512x512 edge magnitude video frame
+			will not move?
+		goal ??
+			This window will show the desired correlation surface that will result from convolving the video frame with an exact filter. 
+			Keep in mind this is a grayscale image in the spatial domain with a Gaussian centered on the center of the frigate bird.
+			***all black, white dot on bird***
+		Exact - exact filter that generates goal when convolved on frame
+			 This window will show the exact filter that, when convolved with the video frame, generates the goal correlation surface.
+		ASEF - average of exact filters
+			This window will show an evolving running average of the exact filters. Note on frame 1 it will match the display in the window Exact. 
+			After that it should start to become more readily understood as the sillouette of the frigate bird. The exact approach to weighting exact filters is up to you to choose. 
+			In other words, you are being asked to experiement with some different options and draw conclusions about strengths and weaknesses of different approaches.
+			
+	hard: quotient operation in the frequency domain
+		complex conjugates...
+		if you're first post in piazza
+	Along the way, you will probably want to display and inspect 
+		the FFT of the current frame, 
+		the target correlation surface, and 
+		the result of dividing the one by the other.
+		
+	moveWindow command in openCV is useful for laying out your four windows in such a way that each is readily seen as the video plays.
+	
+	Extra:
+	Find a single additional video where you can also demonstrate the development of ASEF filters. 
+	By default, find some other object easily tracked using a simple feature so that you can generate the goal image for each frame. 
+	That is sufficient for this assignment. 
+	However, if you choose, you may want to try a video where after some number of frames (16, 32, etc.) 
+		your system starts using the correlation filter from frame k to first identifiy the most likely position of the object in fram k+1 and build the next goal image accordinly. 
+	In other words, you may wish to build a tracker.
+
+
+
+TODO:
+    R:
+      Window Sizing
+      Tiling
+      Rolling Average of video frames

@@ -31,7 +31,7 @@ if __name__ == '__main__':
         print("Could not open video")
         sys.exit()
     print("Warming up webcam...")
-    for i in range(0, 60):
+    for i in range(0, 6):
         ok, frame = video.read()
     cv2.flip(frame, 1, frame)
     if not ok:
@@ -39,6 +39,10 @@ if __name__ == '__main__':
         sys.exit()
     isDone = False
     startTime = 0
+
+    #Initlize SURF
+    #surf = cv2.SURF(400)
+    surf = cv2.xfeatures2d.SURF_create(400)
     while not isDone:
         tracker = cv2.TrackerKCF_create()
         bbox = cv2.selectROI('Initialize KCF Tracker', frame, True, True)
@@ -65,6 +69,11 @@ if __name__ == '__main__':
             cv2.rectangle(gray, p1, p2, (255, 0, 0), 2, 1)
             #fps = 'FPS: ' + ('%d' % (1 / (time.time() - startTime)))
             #cv2.putText(gray, fps, (30,30), cv2.FONT_HERSHEY_COMPLEX, 1, (255,255,255))
+
+            #Update SURF
+            keypoints, descriptors = surf.detectAndCompute(frame, None)
+            gray = cv2.drawKeypoints(gray, keypoints, None,(0,0,255),4)
+
             cv2.imshow('gray', gray)
             #startTime = time.time()
             k = cv2.waitKey(1) & 0xff

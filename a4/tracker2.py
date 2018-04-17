@@ -38,9 +38,9 @@ if __name__ == '__main__':
     useASEF = False
     _g = None
     _f = None
-    cv2.namedWindow('interface', cv2.WINDOW_AUTOSIZE)
-    cv2.createTrackbar('sigma', 'interface', gaussianSigma, 60, updateSigma)
-    cv2.createTrackbar('smoothing', 'interface', int(10 * SMOOTHING_FACTOR), 10, updateSmoothing)
+    cv2.namedWindow('master', cv2.WINDOW_AUTOSIZE|cv2.WINDOW_GUI_NORMAL)
+    cv2.createTrackbar('sigma', 'master', gaussianSigma, 60, updateSigma)
+    cv2.createTrackbar('smoothing', 'master', int(10 * SMOOTHING_FACTOR), 10, updateSmoothing)
     startTime = 0
     while not isDone:
         tracker = cv2.TrackerKCF_create()
@@ -84,6 +84,8 @@ if __name__ == '__main__':
             fps = 'FPS: ' + ('%d' % (1 / (time.time() - startTime)))
             cv2.putText(master, fps, (30,30), cv2.FONT_HERSHEY_COMPLEX, 1, (255,255,255))
             cv2.imshow('master', master)
+            cv2.moveWindow('master', 0, 0)
+            cv2.moveWindow('interface', 0, 0)
             startTime = time.time()
             k = cv2.waitKey(1) & 0xff
             if k == ord('a'): # space to toggle ASEF/MOSSE tracking

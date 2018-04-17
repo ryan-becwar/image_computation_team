@@ -25,8 +25,11 @@ def getFrame(cap):
         return None
     return cv2.flip(frame, 1, frame)
 
-def getName(frame, keypoints, descriptors):
+def getName(frame, keypoints, descriptors, model: dict):
     return "objname"
+
+def updateModel(model, currentObj, descriptors):
+    model[currentObj] = descriptors
 
 if __name__ == '__main__':
     sumFilters = None
@@ -50,15 +53,19 @@ if __name__ == '__main__':
     startTime = 0
     #Initlize SURF
     surf = cv2.xfeatures2d.SIFT_create(64)
-    currentObj = input('Object name: ')
+    model = {}
     while not isDone:
+        currentObj = input('Object name: ')
         frame = getFrame(video)
         if frame is None:
             break
-        bbox = cv2.selectROI('Initialize Tracker', frame, True, True)
+        winname = 'Initialize Tracker'
+        cv2.namedWindow(winname)
+        cv2.moveWindow(winname, 0, 0)
+        bbox = cv2.selectROI(winname, frame, True, True)
         if not bbox or bbox[2] == 0 or bbox[3] == 0:
             continue
-        cv2.destroyWindow('Initialize Tracker')
+        cv2.destroyWindow(winname)
         tracker = cv2.TrackerMOSSE_create()
         ok = tracker.init(frame, bbox)
         while True:
@@ -85,8 +92,10 @@ if __name__ == '__main__':
             # Put some text on the image (post tracking)
             if isTraining == True:
                 text = 'training ' + currentObj
+                updateModel(model, currentObj, descriptors)
             else:
-                text = 'recognizing ' + getName(crop, keypoints, descriptors)
+                currentObj = getName(crop, keypoints, descriptors, model)
+                text = 'recognizing ' + currentObj
             cv2.putText(frame, text, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0))
             cv2.imshow('out', frame)
             cv2.moveWindow('out', 0, 0)

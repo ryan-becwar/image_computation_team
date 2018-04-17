@@ -25,6 +25,9 @@ def getFrame(cap):
         return None
     return cv2.flip(frame, 1, frame)
 
+def getName(frame, keypoints, descriptors):
+    return "objname"
+
 if __name__ == '__main__':
     sumFilters = None
     avgFilter = None
@@ -47,7 +50,7 @@ if __name__ == '__main__':
     startTime = 0
     #Initlize SURF
     surf = cv2.xfeatures2d.SIFT_create(64)
-    currentObj = ''
+    currentObj = input('Object name: ')
     while not isDone:
         frame = getFrame(video)
         if frame is None:
@@ -80,11 +83,11 @@ if __name__ == '__main__':
             frame[y1:y2, x1:x2] = cv2.drawKeypoints(crop, keypoints, None,(0,0,255),4)
 
             # Put some text on the image (post tracking)
-            text = 'training'
-            if isTraining:
-                text = 'not' + text
-            text += currentObj
-            cv2.putText(frame, text, (0, frame.shape[0] - 3), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0))
+            if isTraining == True:
+                text = 'training ' + currentObj
+            else:
+                text = 'recognizing ' + getName(crop, keypoints, descriptors)
+            cv2.putText(frame, text, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0))
             cv2.imshow('out', frame)
             cv2.moveWindow('out', 0, 0)
             k = cv2.waitKey(1) & 0xff

@@ -48,6 +48,13 @@ if __name__ == '__main__':
     #Initlize SURF
     surf = cv2.xfeatures2d.SIFT_create(64)
     currentObj = ''
+
+    #Initialize BFMatcher
+    bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
+    oldKeypoints, oldDescriptors = None, None
+    ran = False
+
+
     while not isDone:
         frame = getFrame(video)
         if frame is None:
@@ -79,6 +86,21 @@ if __name__ == '__main__':
             keypoints, descriptors = surf.detectAndCompute(crop, None)
             frame[y1:y2, x1:x2] = cv2.drawKeypoints(crop, keypoints, None,(0,0,255),4)
 
+            matchImage = frame
+
+            doMatching = True
+            if(doMatching):
+                if ran:
+                    matches = bf.match(oldDescriptors, descriptors)
+                    matches = sorted(matches, key = lambda x:x.distance)
+                    print(keypoints)
+                    matchImage = cv2.drawMatches(oldCrop, oldKeypoints, frame, keypoints, matches[:10], matchImage, flags=2)
+
+            ran = True
+            oldKeypoints, oldDescriptors, oldCrop = keypoints, descriptors, crop
+
+
+
             # Put some text on the image (post tracking)
             text = 'training'
             if isTraining:
@@ -86,6 +108,7 @@ if __name__ == '__main__':
             text += currentObj
             cv2.putText(frame, text, (0, frame.shape[0] - 3), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0))
             cv2.imshow('out', frame)
+            cv2.imshow('matches', matchImage)
             cv2.moveWindow('out', 0, 0)
             k = cv2.waitKey(1) & 0xff
             if k == ord('q'): # q to quit

@@ -1,0 +1,8 @@
+kalman or motion detection
+color output
+color input
+figure out why no cropping
+figure out why only sobel
+profile and increase performance
+mess with decay rate
+mess with gaussian size

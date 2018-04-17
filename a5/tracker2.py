@@ -110,8 +110,8 @@ if __name__ == '__main__':
 
             matchImage = frame
 
-            doMatching = True
-            if(doMatching):
+            doMatching = False
+            if doMatching:
                 if ran:
                     matches = bf.match(oldDescriptors, descriptors)
                     matches = sorted(matches, key = lambda x:x.distance)

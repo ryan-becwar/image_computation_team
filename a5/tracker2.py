@@ -4,7 +4,6 @@ import cv2
 import sys
 import numpy as np
 import time
-from tracker import *
 
 def quickNorm(img):
     return cv2.normalize(img, None, -1, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
@@ -20,6 +19,12 @@ def updateSigma(x):
 gaussianDim = 64
 gaussianSigma = 2
 
+def getFrame(cap):
+    ok, frame = cap.read()
+    if not ok:  # video finished
+        return None
+    return cv2.flip(frame, 1, frame)
+
 if __name__ == '__main__':
     sumFilters = None
     avgFilter = None
@@ -31,54 +36,66 @@ if __name__ == '__main__':
         print("Could not open video")
         sys.exit()
     print("Warming up webcam...")
-    for i in range(0, 6):
+    for i in range(0, 30):
         ok, frame = video.read()
     cv2.flip(frame, 1, frame)
     if not ok:
         print('Cannot read video file')
         sys.exit()
     isDone = False
+    isTraining = False
     startTime = 0
-
     #Initlize SURF
-    #surf = cv2.SURF(400)
-    surf = cv2.xfeatures2d.SURF_create(400)
+    surf = cv2.xfeatures2d.SIFT_create(64)
+    currentObj = ''
     while not isDone:
-        tracker = cv2.TrackerKCF_create()
-        bbox = cv2.selectROI('Initialize KCF Tracker', frame, True, True)
-        cv2.destroyWindow('Initialize KCF Tracker')
+        frame = getFrame(video)
+        if frame is None:
+            break
+        bbox = cv2.selectROI('Initialize Tracker', frame, True, True)
+        if not bbox or bbox[2] == 0 or bbox[3] == 0:
+            continue
+        cv2.destroyWindow('Initialize Tracker')
+        tracker = cv2.TrackerMOSSE_create()
         ok = tracker.init(frame, bbox)
-        w = int(bbox[2])
-        h = int(bbox[3])
         while True:
-            ok, frame = video.read()
-            if not ok: # video finished
+            frame = getFrame(video)
+            if frame is None:
                 isDone = True
                 break
-            cv2.flip(frame, 1, frame)
-            #gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            gray = frame
 
-            #Update kcf tracker
+            # Update kcf tracker
             ok, bbox = tracker.update(frame)
             if not ok: # tracker failed, get user input
                 break
-            p1 = (int(bbox[0]), int(bbox[1]))
-            p2 = (int(bbox[0] + w), int(bbox[1] + h))
-            x, y = p1[0] + int(w/2), p1[1] + int(h/2)
-            cv2.rectangle(gray, p1, p2, (255, 0, 0), 2, 1)
-            #fps = 'FPS: ' + ('%d' % (1 / (time.time() - startTime)))
-            #cv2.putText(gray, fps, (30,30), cv2.FONT_HERSHEY_COMPLEX, 1, (255,255,255))
+            # bbox = topleftX, topleftY, W, H
+            x1, y1, w, h = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
+            x2, y2 = x1+w, y1+h
+            x, y = x1 + int(w/2), y1 + int(h/2)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2, 1)
+            crop = frame[y1:y2, x1:x2]
 
-            #Update SURF
-            keypoints, descriptors = surf.detectAndCompute(frame, None)
-            gray = cv2.drawKeypoints(gray, keypoints, None,(0,0,255),4)
+            # Update SURF
+            keypoints, descriptors = surf.detectAndCompute(crop, None)
+            frame[y1:y2, x1:x2] = cv2.drawKeypoints(crop, keypoints, None,(0,0,255),4)
 
-            cv2.imshow('gray', gray)
-            #startTime = time.time()
+            # Put some text on the image (post tracking)
+            text = 'training'
+            if isTraining:
+                text = 'not' + text
+            text += currentObj
+            cv2.putText(frame, text, (0, frame.shape[0] - 3), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0))
+            cv2.imshow('out', frame)
+            cv2.moveWindow('out', 0, 0)
             k = cv2.waitKey(1) & 0xff
-            if k == ord('q'): # esc to quit
+            if k == ord('q'): # q to quit
                 isDone = True
                 break
-
+            elif k == ord('b'): # b to draw new bounding box
+                isDone = False
+                break
+            elif k == ord('n'): # n to name an object
+                currentObj = input('Object name: ')
+            elif k == ord('t'): # t to toggle training
+                isTraining = not isTraining
     video.release()

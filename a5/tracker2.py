@@ -4,6 +4,7 @@ import cv2
 import sys
 import numpy as np
 import time
+import pickle
 
 def quickNorm(img):
     return cv2.normalize(img, None, -1, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
@@ -19,17 +20,23 @@ def updateSigma(x):
 gaussianDim = 64
 gaussianSigma = 2
 
+# taken from https://stackoverflow.com/a/19201448/2782424
+def save_obj(obj, name):
+    with open('obj/'+ name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+def load_obj(name):
+    with open('obj/' + name + '.pkl', 'rb') as f:
+        return pickle.load(f)
+
 def getFrame(cap):
     ok, frame = cap.read()
     if not ok:  # video finished
         return None
     return cv2.flip(frame, 1, frame)
 
-def getName(frame, keypoints, descriptors, model: dict):
+def getName(frame, keypoints, descriptors, model):
     return "objname"
-
-def updateModel(model, currentObj, descriptors):
-    model[currentObj] = descriptors
 
 if __name__ == '__main__':
     sumFilters = None
@@ -53,6 +60,11 @@ if __name__ == '__main__':
     startTime = 0
     #Initlize SURF
     surf = cv2.xfeatures2d.SIFT_create(64)
+    try:
+        model = load_obj('model')
+    except:
+        model = {}
+        save_obj(model, 'model')
     model = {}
     while not isDone:
         currentObj = input('Object name: ')
@@ -92,7 +104,8 @@ if __name__ == '__main__':
             # Put some text on the image (post tracking)
             if isTraining == True:
                 text = 'training ' + currentObj
-                updateModel(model, currentObj, descriptors)
+                # update model with exponential decay
+                model[currentObj] = model[currentObj] * SMOOTHING_FACTOR + (1 - SMOOTHING_FACTOR) * descriptors
             else:
                 currentObj = getName(crop, keypoints, descriptors, model)
                 text = 'recognizing ' + currentObj

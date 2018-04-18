@@ -1,24 +1,10 @@
-# adapted from https://www.learnopencv.com/object-tracking-using-opencv-cpp-python/
-
 import cv2
 import sys
 import numpy as np
 import time
 import pickle
 
-def quickNorm(img):
-    return cv2.normalize(img, None, -1, 1, cv2.NORM_MINMAX, cv2.CV_64FC1)
-
-def updateSmoothing(x):
-    global SMOOTHING_FACTOR
-    SMOOTHING_FACTOR = x/10
-
-def updateSigma(x):
-    global gaussianSigma
-    gaussianSigma = x
-
-gaussianDim = 64
-gaussianSigma = 2
+SMOOTHING_FACTOR = 0.1
 
 # taken from https://stackoverflow.com/a/19201448/2782424
 def save_obj(obj, name):
@@ -35,8 +21,18 @@ def getFrame(cap):
         return None
     return cv2.flip(frame, 1, frame)
 
-def getName(frame, keypoints, descriptors, model):
-    return "objname"
+def getName(matcher, descriptors, model):
+    matches = [(n, matcher.knnMatch(d, descriptors, k=2)) for n, d in model.items()]
+
+    masterMasks = []
+    for name, modelDescriptors in matches:
+        matchesMask = [[0, 0] for i in range(len(modelDescriptors))]
+        for i,(m,n) in enumerate(modelDescriptors):  # ratio test as per Lowe's paper
+            if m.distance < 0.7*n.distance:
+                matchesMask[i]=[1, 0]
+        masterMasks.append((name, matchesMask))
+    return [(name, sum([x_i for x_i, y_i in x])) for name, x in masterMasks]
+
 
 if __name__ == '__main__':
     sumFilters = None
@@ -57,24 +53,26 @@ if __name__ == '__main__':
         sys.exit()
     isDone = False
     isTraining = False
+    isRecognizing = False
     startTime = 0
-    #Initlize SURF
-    surf = cv2.xfeatures2d.SIFT_create(64)
-    currentObj = ''
+    #Initialize SURF
+    detector = cv2.xfeatures2d.SURF_create(1000)
+    #Initialize FLANN
 
-    #Initialize BFMatcher
-    bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
-    oldKeypoints, oldDescriptors = None, None
-    ran = False
+    # FLANN parameters
+    FLANN_INDEX_KDTREE = 0
+    index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+    search_params = dict(checks=50)  # or pass empty dictionary
+    matcher = cv2.FlannBasedMatcher(index_params, search_params)
 
+    name = ''
+    ok = True
     try:
         model = load_obj('model')
     except:
         model = {}
         save_obj(model, 'model')
-    model = {}
     while not isDone:
-        currentObj = input('Object name: ')
         frame = getFrame(video)
         if frame is None:
             break
@@ -85,6 +83,8 @@ if __name__ == '__main__':
         if not bbox or bbox[2] == 0 or bbox[3] == 0:
             continue
         cv2.destroyWindow(winname)
+        if ok:  # don't ask again on tracker failures
+            name = input("Object name: ")
         tracker = cv2.TrackerMOSSE_create()
         ok = tracker.init(frame, bbox)
         while True:
@@ -105,45 +105,52 @@ if __name__ == '__main__':
             crop = frame[y1:y2, x1:x2]
 
             # Update SURF
-            keypoints, descriptors = surf.detectAndCompute(crop, None)
+            keypoints, descriptors = detector.detectAndCompute(crop, None)
             frame[y1:y2, x1:x2] = cv2.drawKeypoints(crop, keypoints, None,(0,0,255),4)
-
-            matchImage = frame
-
-            doMatching = False
-            if doMatching:
-                if ran:
-                    matches = bf.match(oldDescriptors, descriptors)
-                    matches = sorted(matches, key = lambda x:x.distance)
-                    print(keypoints)
-                    matchImage = cv2.drawMatches(oldCrop, oldKeypoints, frame, keypoints, matches[:10], matchImage, flags=2)
-
-            ran = True
-            oldKeypoints, oldDescriptors, oldCrop = keypoints, descriptors, crop
-
-
 
             # Put some text on the image (post tracking)
             if isTraining == True:
-                text = 'training ' + currentObj
+                text = 'training ' + name
                 # update model with exponential decay
-                model[currentObj] = model[currentObj] * SMOOTHING_FACTOR + (1 - SMOOTHING_FACTOR) * descriptors
+                if name in model:
+                    #model[currentObj] = model[currentObj] * SMOOTHING_FACTOR + (1 - SMOOTHING_FACTOR) * descriptors
+                    model[name] = descriptors
+                else:
+                    model[name] = descriptors
+            elif isRecognizing == True:
+                if model:
+                    votesList = getName(matcher, descriptors, model)
+                    text = 'recognizing ' + max(votesList, key=lambda x: x[1])[0]
+                    votesText = str(votesList)
+                    cv2.putText(frame, votesText, (10, frame.shape[0] - 70), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0))
+                else:
+                    text = 'recognizing ???'
             else:
-                currentObj = getName(crop, keypoints, descriptors, model)
-                text = 'recognizing ' + currentObj
-            cv2.putText(frame, text, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0))
+                text = ''
+                help = '(b)ound; (t)rain; (r)ecognize; (s)ave; (l)oad; (q)uit'
+            cv2.putText(frame, text, (10, frame.shape[0] - 40), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0))
+            cv2.putText(frame, help, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0))
             cv2.imshow('out', frame)
-            cv2.imshow('matches', matchImage)
+            #cv2.imshow('matches', matchImage)
             cv2.moveWindow('out', 0, 0)
             k = cv2.waitKey(1) & 0xff
             if k == ord('q'): # q to quit
                 isDone = True
                 break
-            elif k == ord('b'): # b to draw new bounding box
+            elif k == ord('b'): # b to draw new bounding box and stop recognizing and training
+                isTraining = False
+                isRecognizing = False
                 isDone = False
+                cv2.destroyAllWindows()
                 break
-            elif k == ord('n'): # n to name an object
-                currentObj = input('Object name: ')
-            elif k == ord('t'): # t to toggle training
-                isTraining = not isTraining
+            elif k == ord('t'): # t to start training and stop recognizing
+                isTraining = True
+                isRecognizing = False
+            elif k == ord('r'): # r to start recognizing and stop training
+                isTraining = False
+                isRecognizing = True
+            elif k == ord('s'): # s to save to disk
+                save_obj(model, 'model')
+            elif k == ord('s'): # l to load from disk
+                model = load_obj('model')
     video.release()

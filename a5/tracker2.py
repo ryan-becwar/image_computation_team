@@ -5,6 +5,7 @@ import time
 import pickle
 
 MODEL_SIZE = 100
+HESSIAN_THRESHOLD = 500
 
 # taken from https://stackoverflow.com/a/19201448/2782424
 def save_obj(obj, name):
@@ -22,6 +23,8 @@ def getFrame(cap):
     return cv2.flip(frame, 1, frame)
 
 def getName(matcher, queryDescriptors, model):
+    if queryDescriptors is None or len(queryDescriptors) == 0:
+        return 'NO FEATURES DETECTED'
     votesList = []
     for name, descriptorList in model.items():
         votes = 0
@@ -55,7 +58,7 @@ if __name__ == '__main__':
     isRecognizing = True
     startTime = 0
     #Initialize SURF
-    detector = cv2.xfeatures2d.SURF_create(1000)
+    detector = cv2.xfeatures2d.SURF_create(HESSIAN_THRESHOLD)
     #Initialize FLANN
 
     # FLANN parameters

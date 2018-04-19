@@ -4,7 +4,7 @@ import numpy as np
 import time
 import pickle
 
-SMOOTHING_FACTOR = 0.1
+MODEL_SIZE = 100
 
 # taken from https://stackoverflow.com/a/19201448/2782424
 def save_obj(obj, name):
@@ -21,18 +21,17 @@ def getFrame(cap):
         return None
     return cv2.flip(frame, 1, frame)
 
-def getName(matcher, descriptors, model):
-    matches = [(n, matcher.knnMatch(d, descriptors, k=2)) for n, d in model.items()]
-
-    masterMasks = []
-    for name, modelDescriptors in matches:
-        matchesMask = [[0, 0] for i in range(len(modelDescriptors))]
-        for i,(m,n) in enumerate(modelDescriptors):  # ratio test as per Lowe's paper
-            if m.distance < 0.7*n.distance:
-                matchesMask[i]=[1, 0]
-        masterMasks.append((name, matchesMask))
-    return [(name, sum([x_i for x_i, y_i in x])) for name, x in masterMasks]
-
+def getName(matcher, queryDescriptors, model):
+    votesList = []
+    for name, descriptorList in model.items():
+        votes = 0
+        for trainDescriptors in descriptorList:
+            matches = matcher.knnMatch(trainDescriptors, queryDescriptors, k=2)
+            for i,(m,n) in enumerate(matches):  # ratio test as per Lowe's paper
+                if m.distance < 0.7*n.distance:
+                    votes += 1
+        votesList.append((name, votes))
+    return sorted(votesList, key=lambda x: x[1], reverse=True)
 
 if __name__ == '__main__':
     sumFilters = None
@@ -53,7 +52,7 @@ if __name__ == '__main__':
         sys.exit()
     isDone = False
     isTraining = False
-    isRecognizing = False
+    isRecognizing = True
     startTime = 0
     #Initialize SURF
     detector = cv2.xfeatures2d.SURF_create(1000)
@@ -83,8 +82,6 @@ if __name__ == '__main__':
         if not bbox or bbox[2] == 0 or bbox[3] == 0:
             continue
         cv2.destroyWindow(winname)
-        if ok:  # don't ask again on tracker failures
-            name = input("Object name: ")
         tracker = cv2.TrackerMOSSE_create()
         ok = tracker.init(frame, bbox)
         while True:
@@ -113,10 +110,11 @@ if __name__ == '__main__':
                 text = 'training ' + name
                 # update model with exponential decay
                 if name in model:
-                    #model[currentObj] = model[currentObj] * SMOOTHING_FACTOR + (1 - SMOOTHING_FACTOR) * descriptors
-                    model[name] = descriptors
+                    model[name].append(descriptors)
+                    if len(model[name]) > MODEL_SIZE:
+                        del model[name][0]
                 else:
-                    model[name] = descriptors
+                    model[name] = [descriptors]
             elif isRecognizing == True:
                 if model:
                     votesList = getName(matcher, descriptors, model)
@@ -127,9 +125,8 @@ if __name__ == '__main__':
                     text = 'recognizing ???'
             else:
                 text = ''
-                help = '(b)ound; (t)rain; (r)ecognize; (s)ave; (l)oad; (q)uit'
             cv2.putText(frame, text, (10, frame.shape[0] - 40), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0))
-            cv2.putText(frame, help, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0))
+            cv2.putText(frame, '(b)ound; (t)rain; (r)ecognize; (s)ave; (l)oad; (q)uit', (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0))
             cv2.imshow('out', frame)
             #cv2.imshow('matches', matchImage)
             cv2.moveWindow('out', 0, 0)
@@ -146,6 +143,7 @@ if __name__ == '__main__':
             elif k == ord('t'): # t to start training and stop recognizing
                 isTraining = True
                 isRecognizing = False
+                name = input("Object name: ")
             elif k == ord('r'): # r to start recognizing and stop training
                 isTraining = False
                 isRecognizing = True

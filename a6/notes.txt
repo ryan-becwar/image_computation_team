@@ -1,0 +1,22 @@
+1: write a complete TensorFlow model by selectively including parts of the two examples
+2: generate a simple comparison of different learning models while varying two architectural features
+
+mnist_ .py where team_name is something distinctive
+it will log information to a directory using the TensorFlow summaries capability
+
+include the use of layers and build a convolution neural network
+	matching the structure of network from file cnn_mnist.py 
+	also summaries capabilities
+
+present results across at least eight different model variants. 
+	size of the intermediate layers within your network, the learning rate, and the use of dropout
+
+study the last portion of the video on YouTube describing the use of summaries
+	comparative results from a number of different models into a format that is easily inspected using TensorBoard
+
+
+one paragraph introduction, 
+a section outlining your tuning experiment, 
+	include one or more figures highlighting the salient findings relative to the different architectures and parameter settings examined
+and a conclusion
+	conclusion can be as brief as one paragraph or longer if you choose

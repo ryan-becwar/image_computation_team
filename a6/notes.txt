@@ -20,3 +20,7 @@ a section outlining your tuning experiment,
 	include one or more figures highlighting the salient findings relative to the different architectures and parameter settings examined
 and a conclusion
 	conclusion can be as brief as one paragraph or longer if you choose
+
+see these:
+tf.get_collection
+https://stackoverflow.com/questions/43480488/visualizing-filter-weights-in-tf-layers-conv2d

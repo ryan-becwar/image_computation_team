@@ -9,7 +9,9 @@ include the use of layers and build a convolution neural network
 	also summaries capabilities
 
 present results across at least eight different model variants. 
-	size of the intermediate layers within your network, the learning rate, and the use of dropout
+	size of the intermediate layers within your network, 
+	the learning rate, 
+	and the use of dropout
 
 study the last portion of the video on YouTube describing the use of summaries
 	comparative results from a number of different models into a format that is easily inspected using TensorBoard
@@ -20,3 +22,12 @@ a section outlining your tuning experiment,
 	include one or more figures highlighting the salient findings relative to the different architectures and parameter settings examined
 and a conclusion
 	conclusion can be as brief as one paragraph or longer if you choose
+
+in class:
+	figure out if it's easy to put weights into summaries
+		see youtube video description
+		https://www.youtube.com/watch?time_continue=5&v=eBbEDRsCmv4
+
+also see http://www.cs.colostate.edu/~cs510/yr2018sp/home_resources.php
+ 
+

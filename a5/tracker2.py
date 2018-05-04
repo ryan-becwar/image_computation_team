@@ -4,7 +4,7 @@ import numpy as np
 import time
 import pickle
 
-MODEL_SIZE = 100
+MODEL_SIZE = 60
 HESSIAN_THRESHOLD = 500
 
 # taken from https://stackoverflow.com/a/19201448/2782424
@@ -15,6 +15,7 @@ def save_obj(obj, name):
 def load_obj(name):
     with open('obj/' + name + '.pkl', 'rb') as f:
         return pickle.load(f)
+# end taken
 
 def getFrame(cap):
     ok, frame = cap.read()
@@ -42,7 +43,10 @@ if __name__ == '__main__':
     video = cv2.VideoCapture(0)
     video.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     video.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-    video.set(cv2.CAP_PROP_FPS, 60)
+    video.set(cv2.CAP_PROP_FPS, 30)
+    winname = 'Initialize Tracker'
+    cv2.namedWindow(winname)
+    cv2.namedWindow('out')
     if not video.isOpened():
         print("Could not open video")
         sys.exit()
@@ -56,6 +60,7 @@ if __name__ == '__main__':
     isDone = False
     isTraining = False
     isRecognizing = True
+    hideF = False
     startTime = 0
     #Initialize SURF
     detector = cv2.xfeatures2d.SURF_create(HESSIAN_THRESHOLD)
@@ -78,13 +83,10 @@ if __name__ == '__main__':
         frame = getFrame(video)
         if frame is None:
             break
-        winname = 'Initialize Tracker'
-        cv2.namedWindow(winname)
-        cv2.moveWindow(winname, 0, 0)
         bbox = cv2.selectROI(winname, frame, True, True)
         if not bbox or bbox[2] == 0 or bbox[3] == 0:
             continue
-        cv2.destroyWindow(winname)
+        #cv2.destroyWindow(winname)
         tracker = cv2.TrackerMOSSE_create()
         ok = tracker.init(frame, bbox)
         while True:
@@ -105,8 +107,17 @@ if __name__ == '__main__':
             crop = frame[y1:y2, x1:x2]
 
             # Update SURF
+            if x1 < 0 or y1 < 0 or x1 + w > frame.shape[1] or y1 + h > frame.shape[0]:
+                keypoints = None
+                descriptors = None
+                cv2.imshow('out', frame)
+                continue
             keypoints, descriptors = detector.detectAndCompute(crop, None)
-            frame[y1:y2, x1:x2] = cv2.drawKeypoints(crop, keypoints, None,(0,0,255),4)
+            if not hideF:
+                frame[y1:y2, x1:x2] = cv2.drawKeypoints(crop, keypoints, None,(0,0,255),4)
+            if len(keypoints) == 0 or len(descriptors) == 0:
+                cv2.imshow('out', frame)
+                continue
 
             # Put some text on the image (post tracking)
             if isTraining == True:
@@ -131,8 +142,6 @@ if __name__ == '__main__':
             cv2.putText(frame, text, (10, frame.shape[0] - 40), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0))
             cv2.putText(frame, '(b)ound; (t)rain; (r)ecognize; (s)ave; (l)oad; (q)uit', (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0))
             cv2.imshow('out', frame)
-            #cv2.imshow('matches', matchImage)
-            cv2.moveWindow('out', 0, 0)
             k = cv2.waitKey(1) & 0xff
             if k == ord('q'): # q to quit
                 isDone = True
@@ -141,7 +150,6 @@ if __name__ == '__main__':
                 isTraining = False
                 isRecognizing = False
                 isDone = False
-                cv2.destroyAllWindows()
                 break
             elif k == ord('t'): # t to start training and stop recognizing
                 isTraining = True
@@ -152,6 +160,8 @@ if __name__ == '__main__':
                 isRecognizing = True
             elif k == ord('s'): # s to save to disk
                 save_obj(model, 'model')
-            elif k == ord('s'): # l to load from disk
+            elif k == ord('l'): # l to load from disk
                 model = load_obj('model')
+            elif k == ord('h'):
+                hideF = not hideF
     video.release()

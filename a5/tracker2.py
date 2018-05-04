@@ -44,7 +44,9 @@ if __name__ == '__main__':
     video.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     video.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     video.set(cv2.CAP_PROP_FPS, 30)
-    #cv2.namedWindow('out', cv2.WINDOW_NORMAL)
+    winname = 'Initialize Tracker'
+    cv2.namedWindow(winname)
+    cv2.namedWindow('out')
     if not video.isOpened():
         print("Could not open video")
         sys.exit()
@@ -78,19 +80,13 @@ if __name__ == '__main__':
         model = {}
         save_obj(model, 'model')
     while not isDone:
-        video.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        video.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-        video.set(cv2.CAP_PROP_FPS, 30)
         frame = getFrame(video)
         if frame is None:
             break
-        winname = 'Initialize Tracker'
-        cv2.namedWindow(winname)
-        cv2.moveWindow(winname, 0, 0)
         bbox = cv2.selectROI(winname, frame, True, True)
         if not bbox or bbox[2] == 0 or bbox[3] == 0:
             continue
-        cv2.destroyWindow(winname)
+        #cv2.destroyWindow(winname)
         tracker = cv2.TrackerMOSSE_create()
         ok = tracker.init(frame, bbox)
         while True:
@@ -111,9 +107,17 @@ if __name__ == '__main__':
             crop = frame[y1:y2, x1:x2]
 
             # Update SURF
+            if x1 < 0 or y1 < 0 or x1 + w > frame.shape[1] or y1 + h > frame.shape[0]:
+                keypoints = None
+                descriptors = None
+                cv2.imshow('out', frame)
+                continue
             keypoints, descriptors = detector.detectAndCompute(crop, None)
             if not hideF:
                 frame[y1:y2, x1:x2] = cv2.drawKeypoints(crop, keypoints, None,(0,0,255),4)
+            if len(keypoints) == 0 or len(descriptors) == 0:
+                cv2.imshow('out', frame)
+                continue
 
             # Put some text on the image (post tracking)
             if isTraining == True:
@@ -146,7 +150,6 @@ if __name__ == '__main__':
                 isTraining = False
                 isRecognizing = False
                 isDone = False
-                cv2.destroyAllWindows()
                 break
             elif k == ord('t'): # t to start training and stop recognizing
                 isTraining = True

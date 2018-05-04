@@ -4,7 +4,7 @@ import numpy as np
 import time
 import pickle
 
-MODEL_SIZE = 100
+MODEL_SIZE = 60
 HESSIAN_THRESHOLD = 500
 
 # taken from https://stackoverflow.com/a/19201448/2782424
@@ -15,6 +15,7 @@ def save_obj(obj, name):
 def load_obj(name):
     with open('obj/' + name + '.pkl', 'rb') as f:
         return pickle.load(f)
+# end taken
 
 def getFrame(cap):
     ok, frame = cap.read()
@@ -42,7 +43,8 @@ if __name__ == '__main__':
     video = cv2.VideoCapture(0)
     video.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     video.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-    video.set(cv2.CAP_PROP_FPS, 60)
+    video.set(cv2.CAP_PROP_FPS, 30)
+    #cv2.namedWindow('out', cv2.WINDOW_NORMAL)
     if not video.isOpened():
         print("Could not open video")
         sys.exit()
@@ -56,6 +58,7 @@ if __name__ == '__main__':
     isDone = False
     isTraining = False
     isRecognizing = True
+    hideF = False
     startTime = 0
     #Initialize SURF
     detector = cv2.xfeatures2d.SURF_create(HESSIAN_THRESHOLD)
@@ -75,6 +78,9 @@ if __name__ == '__main__':
         model = {}
         save_obj(model, 'model')
     while not isDone:
+        video.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        video.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        video.set(cv2.CAP_PROP_FPS, 30)
         frame = getFrame(video)
         if frame is None:
             break
@@ -106,7 +112,8 @@ if __name__ == '__main__':
 
             # Update SURF
             keypoints, descriptors = detector.detectAndCompute(crop, None)
-            frame[y1:y2, x1:x2] = cv2.drawKeypoints(crop, keypoints, None,(0,0,255),4)
+            if not hideF:
+                frame[y1:y2, x1:x2] = cv2.drawKeypoints(crop, keypoints, None,(0,0,255),4)
 
             # Put some text on the image (post tracking)
             if isTraining == True:
@@ -131,8 +138,6 @@ if __name__ == '__main__':
             cv2.putText(frame, text, (10, frame.shape[0] - 40), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0))
             cv2.putText(frame, '(b)ound; (t)rain; (r)ecognize; (s)ave; (l)oad; (q)uit', (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0))
             cv2.imshow('out', frame)
-            #cv2.imshow('matches', matchImage)
-            cv2.moveWindow('out', 0, 0)
             k = cv2.waitKey(1) & 0xff
             if k == ord('q'): # q to quit
                 isDone = True
@@ -152,6 +157,8 @@ if __name__ == '__main__':
                 isRecognizing = True
             elif k == ord('s'): # s to save to disk
                 save_obj(model, 'model')
-            elif k == ord('s'): # l to load from disk
+            elif k == ord('l'): # l to load from disk
                 model = load_obj('model')
+            elif k == ord('h'):
+                hideF = not hideF
     video.release()

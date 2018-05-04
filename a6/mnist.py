@@ -22,17 +22,6 @@ LABELS = os.path.join(os.getcwd(), "labels_1024.tsv")
 SPRITES = os.path.join(os.getcwd(), "sprite_1024.png")
 ### MNIST EMBEDDINGS ###
 mnist = tf.contrib.learn.datasets.mnist.read_data_sets(train_dir=LOGDIR + "data", one_hot=True)
-### Get a sprite and labels file for the embedding projector ###
-
-if not (os.path.isfile(LABELS) and os.path.isfile(SPRITES)):
-  print("Necessary data files were not found. Run this command from inside the "
-    "repo provided at "
-    "https://github.com/dandelionmane/tf-dev-summit-tensorboard-tutorial.")
-  exit(1)
-
-
-# shutil.copyfile(LABELS, os.path.join(LOGDIR, LABELS))
-# shutil.copyfile(SPRITES, os.path.join(LOGDIR, SPRITES))
 
 
 def conv_layer(input, size_in, size_out, name="conv"):
@@ -44,6 +33,8 @@ def conv_layer(input, size_in, size_out, name="conv"):
     tf.summary.histogram("weights", w)
     tf.summary.histogram("biases", b)
     tf.summary.histogram("activations", act)
+    tf.summary.image('kernel_img', tf.get_collection(tf.GraphKeys.VARIABLES, name+'/kernel')[0])
+    tf.summary.image('bias_img', tf.get_collection(tf.GraphKeys.VARIABLES, name+'/bias')[0])
     return tf.nn.max_pool(act, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
 
 

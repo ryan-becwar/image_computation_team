@@ -23,6 +23,7 @@ a section outlining your tuning experiment,
 and a conclusion
 	conclusion can be as brief as one paragraph or longer if you choose
 
+<<<<<<< HEAD
 in class:
 	figure out if it's easy to put weights into summaries
 		see youtube video description
@@ -31,3 +32,8 @@ in class:
 also see http://www.cs.colostate.edu/~cs510/yr2018sp/home_resources.php
  
 
+=======
+see these:
+tf.get_collection
+https://stackoverflow.com/questions/43480488/visualizing-filter-weights-in-tf-layers-conv2d
+>>>>>>> 6f86e2a3decd9f98c975e221cf2a375ebfa9679c

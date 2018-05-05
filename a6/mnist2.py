@@ -84,12 +84,12 @@ def mnist_model(learning_rate, use_two_fc, use_two_conv, hparam):
 
     if use_two_conv:
         conv1 = conv_layer(x_image, 1, 32, "conv1")
-        #pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
-        conv_out = conv_layer(conv1, 32, 64, "conv2")
+        pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
+        conv_out = conv_layer(pool1, 32, 64, "conv2")
     else:
         conv_out = conv_layer(x_image, 1, 16, "conv1")
 
-    #pool2 = tf.layers.max_pooling2d(inputs=conv_out, pool_size=[2, 2], strides=2)
+    pool2 = tf.layers.max_pooling2d(inputs=conv_out, pool_size=[2, 2], strides=2)
     pool2_flat = tf.reshape(conv_out, [-1, 7 * 7 * 64])
 
 

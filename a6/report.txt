@@ -1,0 +1,11 @@
+INTRO:
+
+As opposed to directly combining the convolutional capabilities of the provided cnn_mnist.py and the TensorBoard summaries connection of mnist_summaries.py, we chose to use a TensorBoard tutorial program provided by Dandelion Mané in his talk at the 2017 Tensorflow Dev Summit, titled "Hands-on TensorBoard". This program uses convolutional neural networks to solve the mnist classification problem in a similar manner to the approach taken in cnn_mnist.py.
+
+We have made two<INCREASE IF NEEDED> major modifications:
+1) We have added the capability to visualize the intermediate filter weights as images in tensorboard.
+2) We have removed the embedded visualizer as we deemed it was not necessary for our model.
+
+TUNING:
+
+CONCLUSION:
